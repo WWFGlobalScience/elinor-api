@@ -83,7 +83,7 @@ export_model_all_as_csv.short_description = (
 )
 
 
-@admin.display(ordering="country")
+@admin.display(description="country", ordering="country", )
 def country_flag(obj):
     _country = obj.country
     if _country is None:
