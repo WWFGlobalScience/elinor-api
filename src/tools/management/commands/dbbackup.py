@@ -7,10 +7,7 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 
 
-AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
-AWS_REGION = settings.AWS_REGION
-AWS_BACKUP_BUCKET = settings.AWS_BACKUP_BUCKET
+APP = "elinor"
 BACKUP_EXTENSION = "sql"
 
 
@@ -23,15 +20,15 @@ class Command(BaseCommand):
         self.env = os.environ.get("ENV", "none").lower()
         print("ENV: %s" % self.env)
         print("BACKUP: %s" % self.backup)
-        self.local_file_location = os.path.join(os.path.sep, "tmp", "mpasocial")
+        self.local_file_location = os.path.join(os.path.sep, "tmp", APP)
         try:
             os.mkdir(self.local_file_location)
         except OSError:
             pass  # Means it already exists.
         session = boto3.session.Session(
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION,
         )
         self.s3 = session.client("s3")
 
@@ -59,16 +56,8 @@ class Command(BaseCommand):
             print("Skipping Backup")
             return None
 
-        new_aws_key_name = "%s/mpasocial_backup_%s.%s" % (
-            self.backup,
-            simpleflake(),
-            BACKUP_EXTENSION,
-        )
-        new_backup_filename = "%s_mpasocial_backup_%s.%s" % (
-            self.backup,
-            simpleflake(),
-            BACKUP_EXTENSION,
-        )
+        new_aws_key_name = f"{self.backup}/{APP}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
+        new_backup_filename = f"{self.backup}_{APP}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
         new_backup_path = os.path.join(self.local_file_location, new_backup_filename)
         self._pg_dump(new_backup_path)
 
@@ -77,10 +66,10 @@ class Command(BaseCommand):
         if options.get("no_upload", False) is False:
             print(
                 "Uploading {0} to S3 bucket {1}".format(
-                    new_aws_key_name, AWS_BACKUP_BUCKET
+                    new_aws_key_name, settings.AWS_BACKUP_BUCKET
                 )
             )
-            self.s3.upload_file(new_backup_path, AWS_BACKUP_BUCKET, new_aws_key_name)
+            self.s3.upload_file(new_backup_path, settings.AWS_BACKUP_BUCKET, new_aws_key_name)
             print("Backup Complete")
 
     def _pg_dump(self, filename):
@@ -96,7 +85,7 @@ class Command(BaseCommand):
             "pg_dump -U {db_user} -h {db_host} -d {db_name} -f {dump_file} -v"
         )
         dump_command = shlex.split(dump_command_str.format(**params))
-        self._run(dump_command, to_file="/tmp/mpasocial/std_out_backup.log")
+        self._run(dump_command, to_file=f"/tmp/{APP}/std_out_backup.log")
         print("Dump Complete!")
 
     def _run(self, command, std_input=None, to_file=None):
