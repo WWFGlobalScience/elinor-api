@@ -25,7 +25,7 @@ jobs:
             WWFGlobalScience/elinor-api
           # generate Docker tags based on the following events/attributes
           tags: |
-            type=match,pattern=dev
+            type=ref,event=branch
             type=semver,pattern={{version}}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
