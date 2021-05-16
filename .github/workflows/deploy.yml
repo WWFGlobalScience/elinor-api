@@ -7,9 +7,6 @@ on:
     tags:
       - v[0-9]+.[0-9]+*  # v1.2[.3]
 
-env:
-  IMAGE_NAME: elinor-api
-
 jobs:
   build_and_push:
     name: Build Docker image and push to GitHub Packages
@@ -51,9 +48,7 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - name: Build image
         run: |
-          IMAGE_ID=ghcr.io/${{ github.repository }}/$IMAGE_NAME
-          echo IMAGE_ID=$IMAGE_ID
-          build -t IMAGE_ID:${{ github.sha }} -f Dockerfile --rm --no-cache .
+          docker build -t ghcr.io/${{ github.repository }}:${{ github.sha }} -f Dockerfile --rm --no-cache .
 #      - name: Build and push
 #        uses: docker/build-push-action@v2
 #        with:
