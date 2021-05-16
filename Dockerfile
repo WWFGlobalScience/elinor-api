@@ -1,5 +1,7 @@
 FROM honeycrisp/docker:django-geo-api
 
+RUN apt-get update && apt-get install -y --no-install-recommends postgresql-client-13
+
 ADD ./requirements.txt requirements.txt
 RUN pip install --upgrade -r requirements.txt
 RUN rm requirements.txt

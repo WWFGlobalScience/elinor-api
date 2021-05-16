@@ -1,3 +1,1 @@
-from .base import (
-    Profile,
-)
+from .base import Profile

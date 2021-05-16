@@ -9,11 +9,6 @@ import boto3
 from boto3.s3.transfer import S3Transfer
 from optparse import make_option
 
-AWS_ACCESS_KEY_ID = settings.AWS_ACCESS_KEY_ID
-AWS_SECRET_ACCESS_KEY = settings.AWS_SECRET_ACCESS_KEY
-AWS_REGION = settings.AWS_REGION
-AWS_BACKUP_BUCKET = settings.AWS_BACKUP_BUCKET
-
 
 class Command(BaseCommand):
     help = "Recreate db and restore data from most recent dump"
@@ -24,15 +19,15 @@ class Command(BaseCommand):
         self.env = os.environ.get("ENV", "none").lower()
         print("ENV: %s" % self.env)
         print("RESTORE: %s" % self.restore)
-        self.local_file_location = os.path.join(os.path.sep, "tmp", "mermaid")
+        self.local_file_location = os.path.join(os.path.sep, "tmp", settings.APPNAME)
         try:
             os.mkdir(self.local_file_location)
         except OSError:
             pass  # Means it already exists.
         session = boto3.session.Session(
-            aws_access_key_id=AWS_ACCESS_KEY_ID,
-            aws_secret_access_key=AWS_SECRET_ACCESS_KEY,
-            region_name=AWS_REGION,
+            aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+            region_name=settings.AWS_REGION,
         )
         self.s3 = session.client("s3")
 
@@ -53,7 +48,7 @@ class Command(BaseCommand):
             action="store_true",
             dest="no_download",
             default=False,
-            help="Do not download dumped " "data from S3",
+            help="Do not download dumped data from S3",
         )
 
     def handle(self, *args, **options):
@@ -89,7 +84,7 @@ class Command(BaseCommand):
             print(download_file_name)
 
         else:
-            bucket_file_list = self.get_s3_bucket_obj_list(AWS_BACKUP_BUCKET)
+            bucket_file_list = self.get_s3_bucket_obj_list(settings.AWS_BACKUP_BUCKET)
             download_file_name = ""
 
             if bucket_file_list:
@@ -99,27 +94,28 @@ class Command(BaseCommand):
                 print("Retrieving latest backup")
                 for s3_obj in bucket_file_list:
                     if self.restore in s3_obj["Key"]:
-                        if latest_key_name is None:
-                            latest_key_name = s3_obj
-                            print("Latest Key Name: %s" % latest_key_name["Key"])
-                        elif s3_obj.get("LastModified") > latest_key_name.get(
+                        if latest_key_name is None or s3_obj.get(
                             "LastModified"
-                        ):
+                        ) > latest_key_name.get("LastModified"):
                             latest_key_name = s3_obj
                             print("Latest Key Name: %s" % latest_key_name["Key"])
 
-                if latest_key_name:
+                if latest_key_name and latest_key_name["Key"][-1] != "/":
                     download_file_name = os.path.join(
                         os.path.sep,
                         self.local_file_location,
                         "{0}_{1}".format(
-                            latest_key_name.get("LastModified").strftime("%Y%m%d%H%M%S"),
+                            latest_key_name.get("LastModified").strftime(
+                                "%Y%m%d%H%M%S"
+                            ),
                             latest_key_name.get("Key").replace("/", "_"),
                         ),
                     )
 
                     # If the file doesn't exist locally, then download
-                    if not os.path.isfile(download_file_name):  # Check if the file exists
+                    if not os.path.isfile(
+                        download_file_name
+                    ):  # Check if the file exists
                         print(
                             "Downloading: {0} to: {1} ".format(
                                 latest_key_name.get("Key"), download_file_name
@@ -127,13 +123,15 @@ class Command(BaseCommand):
                         )
 
                         self.s3.download_file(
-                            AWS_BACKUP_BUCKET,
+                            settings.AWS_BACKUP_BUCKET,
                             latest_key_name.get("Key"),
                             download_file_name,
                         )
 
             else:
-                raise ValueError(f"{AWS_BACKUP_BUCKET} does not exist or is not listable")
+                raise ValueError(
+                    f"{settings.AWS_BACKUP_BUCKET} does not exist or is not listable"
+                )
 
         try:
             self._init_db()
@@ -189,7 +187,7 @@ class Command(BaseCommand):
 
         command = shlex.split(cmd_str)
 
-        self._run(command, to_file="/tmp/mermaid/stdout.log")
+        self._run(command, to_file=f"/tmp/{settings.APPNAME}/stdout.log")
 
     def _run(self, command, std_input=None, to_file=None):
         try:

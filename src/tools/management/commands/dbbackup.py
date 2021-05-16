@@ -7,7 +7,6 @@ from django.core.management.base import BaseCommand
 from django.conf import settings
 
 
-APP = "elinor"
 BACKUP_EXTENSION = "sql"
 
 
@@ -20,7 +19,7 @@ class Command(BaseCommand):
         self.env = os.environ.get("ENV", "none").lower()
         print("ENV: %s" % self.env)
         print("BACKUP: %s" % self.backup)
-        self.local_file_location = os.path.join(os.path.sep, "tmp", APP)
+        self.local_file_location = os.path.join(os.path.sep, "tmp", settings.APPNAME)
         try:
             os.mkdir(self.local_file_location)
         except OSError:
@@ -56,8 +55,8 @@ class Command(BaseCommand):
             print("Skipping Backup")
             return None
 
-        new_aws_key_name = f"{self.backup}/{APP}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
-        new_backup_filename = f"{self.backup}_{APP}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
+        new_aws_key_name = f"{self.backup}/{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
+        new_backup_filename = f"{self.backup}_{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
         new_backup_path = os.path.join(self.local_file_location, new_backup_filename)
         self._pg_dump(new_backup_path)
 
@@ -69,7 +68,9 @@ class Command(BaseCommand):
                     new_aws_key_name, settings.AWS_BACKUP_BUCKET
                 )
             )
-            self.s3.upload_file(new_backup_path, settings.AWS_BACKUP_BUCKET, new_aws_key_name)
+            self.s3.upload_file(
+                new_backup_path, settings.AWS_BACKUP_BUCKET, new_aws_key_name
+            )
             print("Backup Complete")
 
     def _pg_dump(self, filename):
@@ -85,7 +86,7 @@ class Command(BaseCommand):
             "pg_dump -U {db_user} -h {db_host} -d {db_name} -f {dump_file} -v"
         )
         dump_command = shlex.split(dump_command_str.format(**params))
-        self._run(dump_command, to_file=f"/tmp/{APP}/std_out_backup.log")
+        self._run(dump_command, to_file=f"/tmp/{settings.APPNAME}/std_out_backup.log")
         print("Dump Complete!")
 
     def _run(self, command, std_input=None, to_file=None):

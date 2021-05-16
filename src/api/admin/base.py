@@ -83,14 +83,12 @@ export_model_all_as_csv.short_description = (
 )
 
 
-@admin.display(description="country", ordering="country", )
+@admin.display(description="country", ordering="country")
 def country_flag(obj):
     _country = obj.country
     if _country is None:
         return ""
-    return format_html(
-        '<img src="{}"> {}'.format(_country.flag, _country.name)
-    )
+    return format_html('<img src="{}"> {}'.format(_country.flag, _country.name))
 
 
 class BaseAdmin(OSMGeoAdmin):
@@ -99,8 +97,8 @@ class BaseAdmin(OSMGeoAdmin):
 
 
 class BaseChoiceAdmin(admin.ModelAdmin):
-    list_display = ["name",]
-    ordering = ["name",]
+    list_display = ["name"]
+    ordering = ["name"]
 
 
 admin.site.unregister(UserModel)
@@ -164,6 +162,12 @@ class RegionAdmin(BaseChoiceAdmin):
 
 @admin.register(ManagementArea)
 class ManagementAreaAdmin(BaseAdmin):
-    list_display = ["name", "date_established", "governance_type", country_flag, "region"]
+    list_display = [
+        "name",
+        "date_established",
+        "governance_type",
+        country_flag,
+        "region",
+    ]
     search_fields = ["name", "governance_type__name", "region__name"]
-    list_filter = ("governance_type", CountryListFilter,)
+    list_filter = ("governance_type", CountryListFilter)
