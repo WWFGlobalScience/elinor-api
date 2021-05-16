@@ -5,7 +5,7 @@ on:
     branches:
       - dev
     tags:
-      - v[0-9]+.[0-9]+.[0-9]+  # v1.2.3
+      - v[0-9]+.[0-9]+*  # v1.2[.3]
 
 jobs:
   build_and_push:
@@ -14,20 +14,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v2
-      - name: Docker meta
-        id: meta
-        uses: docker/metadata-action@v3
-        with:
-          flavor: |
-            latest=auto
-            prefix=ghcr.io/
-          # list of Docker images to use as base name for tags
-          images: |
-            WWFGlobalScience/elinor-api
-          # generate Docker tags based on the following events/attributes
-          tags: |
-            type=sha
-            type=semver,pattern={{version}}
+#      - name: Get meta
+#        id: meta
+#        run: |
+#          # Strip git ref prefix from version
+#          VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+#          # Strip "v" prefix from tag name
+#          [ [ "${{ github.ref }}" == "refs/tags/"* ] ] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+#      - name: Docker meta
+#        id: meta
+#        uses: docker/metadata-action@v3
+#        with:
+#          flavor: |
+#            latest=auto
+#            prefix=ghcr.io/
+#          # list of Docker images to use as base name for tags
+#          images: |
+#            WWFGlobalScience/elinor-api
+#          # generate Docker tags based on the following events/attributes
+#          tags: |
+#            type=sha
+#            type=semver,pattern={{version}}
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v1
       - name: Set up Docker Buildx
@@ -44,5 +51,5 @@ jobs:
         with:
           context: .
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ghcr.io/wwfglobalscience/elinor-api:${{ github.ref }}
