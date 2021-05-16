@@ -53,7 +53,7 @@ jobs:
         run: |
           IMAGE_ID=ghcr.io/$IMAGE_NAME
           echo IMAGE_ID=$IMAGE_ID
-          docker build -t IMAGE_ID:${{ github.sha }} -f Dockerfile --rm --no-cache .
+          docker build -t $IMAGE_ID:${{ github.sha }} -f Dockerfile --rm --no-cache .
 #      - name: Build and push
 #        uses: docker/build-push-action@v2
 #        with:
