@@ -58,7 +58,7 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ env.AWS_REGION }}
+          aws-region: ${{ secrets.AWS_REGION }}
       - name: Create EB app version and update environment
         run: |
           STAMP=$(date +%Y%m%d%H%M%S)
@@ -75,7 +75,7 @@ jobs:
           aws elasticbeanstalk create-application-version \
             --application-name ${{ env.APP }} \
             --version-label $VERSION \
-            --region ${{ env.AWS_REGION }} \
+            --region ${{ secrets.AWS_REGION }} \
             --source-bundle S3Bucket=${{ secrets.AWS_EB_BUCKET }},S3Key=${S3_KEY} \
 
           echo "Updating Elastic Beanstalk environment"
