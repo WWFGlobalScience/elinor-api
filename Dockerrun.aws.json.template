@@ -1,0 +1,13 @@
+{
+  "AWSEBDockerrunVersion": "1",
+  "Image": {
+    "Name": "ghcr.io/wwfglobalscience/elinor-api:<TAG>",
+    "Update": "true"
+  },
+  "Logging": "/var/log/supervisor/",
+  "Ports": [
+    {
+      "ContainerPort": "80"
+    }
+  ]
+}

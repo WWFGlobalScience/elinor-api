@@ -52,6 +52,7 @@ EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
 RESTORE=local
 BACKUP=local
+DJANGO_SECRET_KEY=
 ```
 
 #### Local environment intialization

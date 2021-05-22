@@ -47,7 +47,7 @@ jobs:
           docker push $IMAGE_ID:${{ needs.environment.outputs.env }}
 
   deploy_eb:
-    needs: environment
+    needs: [environment, build_and_push]
     name: Deploy to Elastic Beanstalk
     runs-on: ubuntu-latest
     steps:
@@ -61,24 +61,22 @@ jobs:
           aws-region: ${{ secrets.AWS_REGION }}
       - name: Create EB app version and update environment
         run: |
-          STAMP=$(date +%Y%m%d%H%M%S)
-          VERSION=${{ env.APP }}-${{ needs.environment.outputs.env }}-${{ github.sha }}-${STAMP}
+          BUNDLE=${{ env.APP }}-${{ needs.environment.outputs.env }}.zip
+          sed "s/<TAG>/${{ needs.environment.outputs.env }}/" <Dockerrun.aws.json.template >"Dockerrun.aws.json"
+          zip -r $BUNDLE .platform
+          zip -u $BUNDLE Dockerrun.aws.json
 
-          echo "Creating Source Bundle"
-          zip -r ${{ env.APP }}.zip .platform src Dockerfile requirements.txt
-          S3_KEY="$VERSION.zip"
-
-          echo "Uploading Source Bundle to S3"
-          aws s3 cp ${{ env.APP }}.zip s3://${{ secrets.AWS_EB_BUCKET }}/${S3_KEY} --region ${{ secrets.AWS_REGION }}
+          echo "Copy bundle to S3"
+          aws s3 cp $BUNDLE s3://${{ secrets.AWS_EB_BUCKET }}/$BUNDLE --region ${{ secrets.AWS_REGION }}
 
           echo "Creating Elastic Beanstalk version"
           aws elasticbeanstalk create-application-version \
             --application-name ${{ env.APP }} \
-            --version-label $VERSION \
+            --version-label ${{ github.sha }} \
             --region ${{ secrets.AWS_REGION }} \
-            --source-bundle S3Bucket=${{ secrets.AWS_EB_BUCKET }},S3Key=${S3_KEY}
+            --source-bundle S3Bucket=${{ secrets.AWS_EB_BUCKET }},S3Key=$BUNDLE
 
           echo "Updating Elastic Beanstalk environment"
           aws elasticbeanstalk update-environment \
             --environment-name "${{ env.APP }}-${{ needs.environment.outputs.env }}" \
-            --version-label $VERSION
+            --version-label ${{ github.sha }}

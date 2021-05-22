@@ -18,7 +18,7 @@ ENVIRONMENT = os.environ.get("ENV").lower()
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = "django-insecure-q+7w9xumj0=3gs$ea=q&$ymndz8$7f9gu6tk#_c=k&2t$a5mvb"
+SECRET_KEY = os.environ.get("DJANGO_SECRET_KEY")
 DEBUG = False
 DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
