@@ -74,7 +74,13 @@ class Region(BaseChoiceModel):
     country = CountryField()
 
 
+class ManagementAreaGroup(BaseModel):
+    def __str__(self):
+        return str(self.pk)
+
+
 class ManagementArea(BaseModel):
+    management_area_group = models.ForeignKey(ManagementAreaGroup, on_delete=models.PROTECT)
     name = models.CharField(max_length=255)
     date_established = models.DateField(null=True, blank=True)
     authority_name = models.CharField(max_length=255, blank=True)
@@ -104,6 +110,12 @@ class ManagementArea(BaseModel):
     class Meta:
         verbose_name = _("management area")
         ordering = ["name", "date_established"]
+
+    def save(self, *args, **kwargs):
+        if self.management_area_group_id is None:
+            new_magroup = ManagementAreaGroup.objects.create()
+            self.management_area_group = new_magroup
+        super().save(*args, **kwargs)
 
     def __str__(self):
         _date = ""

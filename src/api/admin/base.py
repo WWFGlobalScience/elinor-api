@@ -167,6 +167,11 @@ class RegionAdmin(BaseChoiceAdmin):
     list_filter = (CountryListFilter,)
 
 
+@admin.register(ManagementAreaGroup)
+class ManagementAreaGroupAdmin(BaseAdmin):
+    pass
+
+
 @admin.register(ManagementArea)
 class ManagementAreaAdmin(BaseAdmin):
     list_display = [
@@ -175,9 +180,11 @@ class ManagementAreaAdmin(BaseAdmin):
         "governance_type",
         country_flag,
         "region",
+        "management_area_group",
     ]
     search_fields = ["name", "governance_type__name", "region__name"]
-    list_filter = ("governance_type", CountryListFilter)
+    list_filter = ("governance_type", CountryListFilter, "management_area_group")
+    readonly_fields = ["management_area_group"]
 
 
 @admin.register(ManagementAreaZone)
