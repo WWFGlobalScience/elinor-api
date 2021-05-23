@@ -88,7 +88,9 @@ def country_flag(obj):
     _country = obj.country
     if _country is None:
         return ""
-    return format_html('<img src="{}"> {}'.format(_country.flag, _country.name))
+    if not isinstance(_country, list):
+        _country = [_country]
+    return format_html(" ".join([f"<img src='{c.flag}'> {c.name}" for c in _country]))
 
 
 class BaseAdmin(OSMGeoAdmin):
@@ -135,15 +137,20 @@ class CountryListFilter(admin.SimpleListFilter):
     def lookups(self, request, model_admin):
         countries = []
         for o in model_admin.model.objects.all():
-            countries.append(getattr(o, self.parameter_name))
+            _countries = getattr(o, self.parameter_name)
+            if not isinstance(_countries, list):
+                _countries = [_countries]
+            countries.extend(_countries)
         countries = set(countries)
         return [
-            (c.code, format_html("<img src='{}'> {}".format(c.flag, c.name)))
-            for c in countries
+            (c.code, format_html(f"<img src='{c.flag}'> {c.name}")) for c in countries
         ]
 
     def queryset(self, request, queryset):
+        _field = getattr(queryset.model, self.parameter_name).field
         if self.value():
+            if _field.multiple:
+                return queryset.filter(country__icontains=self.value())
             return queryset.filter(country=self.value())
         else:
             return queryset
@@ -171,3 +178,10 @@ class ManagementAreaAdmin(BaseAdmin):
     ]
     search_fields = ["name", "governance_type__name", "region__name"]
     list_filter = ("governance_type", CountryListFilter)
+
+
+@admin.register(ManagementAreaZone)
+class ManagementAreaZoneAdmin(BaseAdmin):
+    list_display = ["name", "restricted"]
+    search_fields = ["name"]
+    list_filter = ("restricted",)
