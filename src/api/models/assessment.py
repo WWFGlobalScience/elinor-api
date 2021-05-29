@@ -1,7 +1,7 @@
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.utils.translation import ugettext_lazy as _
-from .base import LIKERT_CHOICES, BaseModel, ManagementArea
+from .base import LIKERT_CHOICES, BaseModel, ManagementArea, ProtectedArea
 
 
 class Assessment(BaseModel):
@@ -9,6 +9,38 @@ class Assessment(BaseModel):
 
     def __str__(self):
         return self.name
+
+
+class Collaborator(BaseModel):
+    ADMIN = 70
+    CONTRIBUTOR = 40
+    OBSERVER = 10
+    ROLES = (
+        (ADMIN, _("admin")),
+        (CONTRIBUTOR, _("contributor")),
+        (OBSERVER, _("observer")),
+    )
+
+    assessment = models.ForeignKey(
+        Assessment, related_name="collaborators", on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="user_assessments",
+        on_delete=models.CASCADE,
+    )
+    role = models.PositiveSmallIntegerField(choices=ROLES)
+
+    @property
+    def is_collector(self):
+        return self.role >= self.CONTRIBUTOR
+
+    @property
+    def is_admin(self):
+        return self.role >= self.ADMIN
+
+    def __str__(self):
+        return f"{self.assessment} {self.user}"
 
 
 class AssessmentPeriod(BaseModel):
@@ -21,12 +53,33 @@ class AssessmentPeriod(BaseModel):
     PUBLIC = 90
     DATA_POLICIES = ((PRIVATE, _("private")), (PUBLIC, _("public")))
 
+    NONPROFIT = 10
+    MANAGER = 20
+    PERSONNEL = 30
+    GOVERNMENT = 40
+    COMMITTEE = 50
+    COMMUNITY = 60
+    PERSON_RESPONSIBLE_ROLES = (
+        (NONPROFIT, _("nonprofit staff")),
+        (MANAGER, _("management area manager")),
+        (PERSONNEL, _("management area personnel")),
+        (GOVERNMENT, _("government personnel")),
+        (COMMITTEE, _("members of local community / indigenous committees")),
+        (COMMUNITY, _("community leaders / representatives")),
+    )
+
     status = models.PositiveSmallIntegerField(choices=STATUSES, default=OPEN)
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
     )
     assessment = models.ForeignKey(
         Assessment, on_delete=models.PROTECT, related_name="assessment_periods"
+    )
+    person_responsible = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="collaborator_aps"
+    )
+    person_responsible_role = models.PositiveSmallIntegerField(
+        choices=PERSON_RESPONSIBLE_ROLES
     )
     year = models.PositiveSmallIntegerField()
     management_area = models.ForeignKey(
@@ -51,8 +104,11 @@ class AssessmentPeriod(BaseModel):
     count_community = models.PositiveSmallIntegerField(
         default=0, verbose_name=_("community leader count")
     )
+    specific_unit = models.BooleanField(default=False)
     focal_area = models.TextField(blank=True)
+    protected_area = models.ForeignKey(ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True)
     consent_given = models.BooleanField(default=False)
+    management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
 
     # Survey questions - need to move to separate model if permissions are different
     stakeholder_defined_rights = models.PositiveSmallIntegerField(
@@ -323,35 +379,33 @@ class AssessmentPeriod(BaseModel):
         return f"{self.assessment.name} {self.year}"
 
 
-class Collaborator(BaseModel):
-    SUPERADMIN = 90
-    ADMIN = 70
-    CONTRIBUTOR = 40
-    OBSERVER = 10
-    ROLES = (
-        (SUPERADMIN, _("superadmin")),
-        (ADMIN, _("admin")),
-        (CONTRIBUTOR, _("contributor")),
-        (OBSERVER, _("observer")),
+class AssessmentPeriodChange(BaseModel):
+    SUBMIT = 1
+    UNSUBMIT = 2
+    DATA_POLICY_PUBLIC = 5
+    DATA_POLICY_PRIVATE = 6
+    EDIT = 10
+
+    EVENT_TYPES = (
+        (SUBMIT, _("submit Assessment Period")),
+        (UNSUBMIT, _("re-open Assessment Period")),
+        (DATA_POLICY_PUBLIC, _("make Assessment Period public")),
+        (DATA_POLICY_PRIVATE, _("make Assessment Period private")),
+        (EDIT, _("edit Assessment Period")),
     )
 
     assessment_period = models.ForeignKey(
-        AssessmentPeriod, related_name="collaborators", on_delete=models.CASCADE
+        AssessmentPeriod,
+        related_name="assessment_period_changes",
+        on_delete=models.CASCADE,
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        related_name="assessment_periods",
+        related_name="user_ap_changes",
         on_delete=models.CASCADE,
     )
-    role = models.PositiveSmallIntegerField(choices=ROLES)
-
-    @property
-    def is_collector(self):
-        return self.role >= self.CONTRIBUTOR
-
-    @property
-    def is_admin(self):
-        return self.role >= self.ADMIN
+    event_on = models.DateTimeField(auto_now_add=True)
+    event_type = models.PositiveSmallIntegerField(choices=EVENT_TYPES)
 
     def __str__(self):
-        return f"{self.assessment_period} {self.user}"
+        return f"{self.event_on} {self.assessment_period} {self.event_type}"

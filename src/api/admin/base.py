@@ -94,6 +94,8 @@ def country_flag(obj):
 
 
 class BaseAdmin(OSMGeoAdmin):
+    list_display = ["updated_on"]
+    readonly_fields = ["created_on", "updated_on"]
     list_select_related = True
     actions = (export_model_display_as_csv, export_model_all_as_csv)
 
@@ -101,6 +103,11 @@ class BaseAdmin(OSMGeoAdmin):
 class BaseChoiceAdmin(admin.ModelAdmin):
     list_display = ["name"]
     ordering = ["name"]
+
+
+@admin.register(Affiliation)
+class AffiliationAdmin(BaseChoiceAdmin):
+    pass
 
 
 admin.site.unregister(UserModel)
@@ -115,6 +122,7 @@ class UserProfileInline(admin.StackedInline):
 
 @admin.register(UserModel)
 class UserProfileAdmin(UserAdmin, BaseAdmin):
+    readonly_fields = []
     inlines = (UserProfileInline,)
 
     def get_inline_instances(self, request, obj=None):
@@ -161,6 +169,11 @@ class GovernanceTypeAdmin(BaseChoiceAdmin):
     pass
 
 
+@admin.register(ProtectedArea)
+class ProtectedAreaAdmin(BaseChoiceAdmin):
+    pass
+
+
 @admin.register(Region)
 class RegionAdmin(BaseChoiceAdmin):
     list_display = ["name", country_flag]
@@ -169,7 +182,12 @@ class RegionAdmin(BaseChoiceAdmin):
 
 @admin.register(ManagementAreaGroup)
 class ManagementAreaGroupAdmin(BaseAdmin):
-    pass
+    list_display = ["pk"] + BaseAdmin.list_display
+
+
+class ManagementAreaZoneInline(admin.StackedInline):
+    model = ManagementAreaZone
+    extra = 0
 
 
 @admin.register(ManagementArea)
@@ -179,16 +197,16 @@ class ManagementAreaAdmin(BaseAdmin):
         "date_established",
         "governance_type",
         country_flag,
-        "region",
         "management_area_group",
-    ]
-    search_fields = ["name", "governance_type__name", "region__name"]
+    ] + BaseAdmin.list_display
+    search_fields = ["name", "governance_type__name"]
     list_filter = ("governance_type", CountryListFilter, "management_area_group")
-    readonly_fields = ["management_area_group"]
+    readonly_fields = ["management_area_group"] + BaseAdmin.readonly_fields
+    inlines = [ManagementAreaZoneInline]
 
 
 @admin.register(ManagementAreaZone)
 class ManagementAreaZoneAdmin(BaseAdmin):
-    list_display = ["name", "restricted"]
+    list_display = ["name", "access_level"] + BaseAdmin.list_display
     search_fields = ["name"]
-    list_filter = ("restricted",)
+    list_filter = ("access_level",)
