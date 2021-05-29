@@ -50,9 +50,13 @@ class BaseChoiceModel(BaseModel):
         return self.name
 
 
+class Affiliation(BaseChoiceModel):
+    pass
+
+
 class Profile(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    affiliation = models.CharField(max_length=255)
+    affiliation = models.ForeignKey(Affiliation, on_delete=models.SET_NULL, blank=True, null=True)
     contact_details = models.TextField(blank=True)
     accept_tor = models.BooleanField(default=False, verbose_name=_("accept ToR"))
 
@@ -70,6 +74,10 @@ class GovernanceType(BaseChoiceModel):
     pass
 
 
+class ProtectedArea(BaseChoiceModel):
+    pass
+
+
 class Region(BaseChoiceModel):
     country = CountryField()
 
@@ -80,7 +88,9 @@ class ManagementAreaGroup(BaseModel):
 
 
 class ManagementArea(BaseModel):
-    management_area_group = models.ForeignKey(ManagementAreaGroup, on_delete=models.PROTECT)
+    management_area_group = models.ForeignKey(
+        ManagementAreaGroup, on_delete=models.PROTECT
+    )
     name = models.CharField(max_length=255)
     date_established = models.DateField(null=True, blank=True)
     authority_name = models.CharField(max_length=255, blank=True)
@@ -92,20 +102,16 @@ class ManagementArea(BaseModel):
         related_name="governance_mas",
     )
     country = CountryField(multiple=True)
-    region = models.ForeignKey(
-        Region,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="region_mas",
-    )
-    polygon = models.PolygonField(srid=4326, null=True, blank=True)
+    region = models.ManyToManyField(Region, blank=True)
+    polygon = models.MultiPolygonField(srid=4326, null=True, blank=True)
     # <= 1 billion ha; unrelated to actual geographic size
     reported_size = models.DecimalField(
         max_digits=11, decimal_places=2, null=True, blank=True
     )
     point = models.PointField(srid=4326, null=True, blank=True)
-    map_image = models.ImageField(blank=True, null=True)
+    import_file = models.FileField(upload_to="upload", blank=True, null=True)
+    map_image = models.ImageField(upload_to="upload", blank=True, null=True)
+    geospatial_sources = models.TextField(blank=True)
 
     class Meta:
         verbose_name = _("management area")
@@ -123,16 +129,34 @@ class ManagementArea(BaseModel):
         if self.date_established:
             _date = f" [{self.date_established}]"
         if self.country:
+            # noinspection PyTypeChecker
             _country = f" [{', '.join([c.name for c in self.country])}]"
         return f"{self.name}{_date}{_country}"
 
 
 class ManagementAreaZone(BaseModel):
+    OPEN_ACCESS = 90
+    PARTIALLY_RESTRICTED = 50
+    FULLY_RESTRICTED = 10
+    ACCESS_CHOICES = (
+        (OPEN_ACCESS, _("Open access (open for extraction and entering)")),
+        (PARTIALLY_RESTRICTED, _("Fully restricted access (total extraction ban)")),
+        (
+            FULLY_RESTRICTED,
+            _(
+                "Partially Restricted (e.g., periodic closures, restriction by use type, restriction by "
+                "activity type, species restrictions, gear restrictions, etc.)"
+            ),
+        ),
+    )
+
     name = models.CharField(max_length=255)
     management_area = models.ForeignKey(
         ManagementArea, on_delete=models.CASCADE, related_name="ma_zones"
     )
-    restricted = models.BooleanField(default=False)
+    access_level = models.PositiveSmallIntegerField(
+        choices=ACCESS_CHOICES, default=OPEN_ACCESS
+    )
     description = models.TextField(blank=True)
 
     class Meta:
