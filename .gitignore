@@ -131,3 +131,5 @@ dmypy.json
 src/static/
 
 *.zip
+
+.idea/

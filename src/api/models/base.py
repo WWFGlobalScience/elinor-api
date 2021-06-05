@@ -10,11 +10,11 @@ AVERAGE = 30
 GOOD = 40
 EXCELLENT = 50
 LIKERT_CHOICES = (
-    (DONTKNOW, _("don't know")),
-    (POOR, _("poor")),
-    (AVERAGE, _("average")),
-    (GOOD, _("good")),
-    (EXCELLENT, _("excellent")),
+    (DONTKNOW, _(f"don't know [{DONTKNOW}]")),
+    (POOR, _(f"poor [{POOR}]")),
+    (AVERAGE, _(f"average [{AVERAGE}]")),
+    (GOOD, _(f"good [{GOOD}]")),
+    (EXCELLENT, _(f"excellent [{EXCELLENT}]")),
 )
 
 
@@ -45,19 +45,19 @@ class BaseChoiceModel(BaseModel):
 
     class Meta:
         abstract = True
+        ordering = ["name", ]
 
     def __str__(self):
         return self.name
 
 
-class Affiliation(BaseChoiceModel):
+class Organization(BaseChoiceModel):
     pass
 
 
 class Profile(BaseModel):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
-    affiliation = models.ForeignKey(Affiliation, on_delete=models.SET_NULL, blank=True, null=True)
-    contact_details = models.TextField(blank=True)
+    affiliation = models.ForeignKey(Organization, on_delete=models.SET_NULL, blank=True, null=True)
     accept_tor = models.BooleanField(default=False, verbose_name=_("accept ToR"))
 
     class Meta:
@@ -78,22 +78,43 @@ class ProtectedArea(BaseChoiceModel):
     pass
 
 
+class StakeholderGroup(BaseChoiceModel):
+    pass
+
+
+class SupportSource(BaseChoiceModel):
+    pass
+
+
 class Region(BaseChoiceModel):
     country = CountryField()
 
 
-class ManagementAreaGroup(BaseModel):
+class ManagementArea(BaseModel):
     def __str__(self):
         return str(self.pk)
 
 
-class ManagementArea(BaseModel):
+class ManagementAreaVersion(BaseModel):
+    LOCAL = "local"
+    NATIONAL = "national"
+    INTERNATIONAL = "international"
+    RECOGNITION_TYPES = (
+        (LOCAL, _(LOCAL)),
+        (NATIONAL, _(NATIONAL)),
+        (INTERNATIONAL, _(INTERNATIONAL)),
+    )
+
     management_area_group = models.ForeignKey(
-        ManagementAreaGroup, on_delete=models.PROTECT
+        ManagementArea, on_delete=models.PROTECT
     )
     name = models.CharField(max_length=255)
+    wdpa_id = models.PositiveIntegerField(blank=True, null=True, verbose_name="WDPA ID")
     date_established = models.DateField(null=True, blank=True)
     authority_name = models.CharField(max_length=255, blank=True)
+    recognition_level = models.CharField(max_length=100, choices=RECOGNITION_TYPES, blank=True, null=True)
+    stakeholder_groups = models.ManyToManyField(StakeholderGroup, blank=True)
+    support_sources = models.ManyToManyField(SupportSource, blank=True)
     governance_type = models.ForeignKey(
         GovernanceType,
         on_delete=models.SET_NULL,
@@ -101,8 +122,8 @@ class ManagementArea(BaseModel):
         blank=True,
         related_name="governance_mas",
     )
-    country = CountryField(multiple=True)
-    region = models.ManyToManyField(Region, blank=True)
+    countries = CountryField(multiple=True)
+    regions = models.ManyToManyField(Region, blank=True)
     polygon = models.MultiPolygonField(srid=4326, null=True, blank=True)
     # <= 1 billion ha; unrelated to actual geographic size
     reported_size = models.DecimalField(
@@ -114,24 +135,24 @@ class ManagementArea(BaseModel):
     geospatial_sources = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = _("management area")
+        verbose_name = _("management area version")
         ordering = ["name", "date_established"]
 
     def save(self, *args, **kwargs):
         if self.management_area_group_id is None:
-            new_magroup = ManagementAreaGroup.objects.create()
+            new_magroup = ManagementArea.objects.create()
             self.management_area_group = new_magroup
         super().save(*args, **kwargs)
 
     def __str__(self):
         _date = ""
-        _country = ""
+        _countries = ""
         if self.date_established:
             _date = f" [{self.date_established}]"
-        if self.country:
+        if self.countries:
             # noinspection PyTypeChecker
-            _country = f" [{', '.join([c.name for c in self.country])}]"
-        return f"{self.name}{_date}{_country}"
+            _countries = f" [{', '.join([c.name for c in self.countries])}]"
+        return f"{self.name}{_date}{_countries}"
 
 
 class ManagementAreaZone(BaseModel):
@@ -152,7 +173,7 @@ class ManagementAreaZone(BaseModel):
 
     name = models.CharField(max_length=255)
     management_area = models.ForeignKey(
-        ManagementArea, on_delete=models.CASCADE, related_name="ma_zones"
+        ManagementAreaVersion, on_delete=models.CASCADE, related_name="ma_zones"
     )
     access_level = models.PositiveSmallIntegerField(
         choices=ACCESS_CHOICES, default=OPEN_ACCESS

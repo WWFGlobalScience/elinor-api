@@ -8,7 +8,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
     ports:
-      - 5432:5432
+      - 5433:5432
 
   elinor_api:
     container_name: elinor_api
@@ -19,8 +19,7 @@ services:
     volumes:
       - $PWD/src:/var/projects/webapp
     ports:
-      - 8080:8080
-      - 80:80
+      - 8081:8081
     env_file:
       - .env
 

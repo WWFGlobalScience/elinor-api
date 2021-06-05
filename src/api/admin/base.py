@@ -85,12 +85,16 @@ export_model_all_as_csv.short_description = (
 
 @admin.display(description="country", ordering="country")
 def country_flag(obj):
-    _country = obj.country
-    if _country is None:
+    _countries = None
+    if hasattr(obj, "countries"):
+        _countries = obj.countries
+    elif hasattr(obj, "country"):
+        _countries = obj.country
+    if _countries is None:
         return ""
-    if not isinstance(_country, list):
-        _country = [_country]
-    return format_html(" ".join([f"<img src='{c.flag}'> {c.name}" for c in _country]))
+    if not isinstance(_countries, list):
+        _countries = [_countries]
+    return format_html(" ".join([f"<img src='{c.flag}'> {c.name}" for c in _countries]))
 
 
 class BaseAdmin(OSMGeoAdmin):
@@ -103,10 +107,11 @@ class BaseAdmin(OSMGeoAdmin):
 class BaseChoiceAdmin(admin.ModelAdmin):
     list_display = ["name"]
     ordering = ["name"]
+    actions = (export_model_display_as_csv, export_model_all_as_csv)
 
 
-@admin.register(Affiliation)
-class AffiliationAdmin(BaseChoiceAdmin):
+@admin.register(Organization)
+class OrganizationAdmin(BaseChoiceAdmin):
     pass
 
 
@@ -139,8 +144,13 @@ class UserProfileAdmin(UserAdmin, BaseAdmin):
 
 
 class CountryListFilter(admin.SimpleListFilter):
-    title = "Country"
-    parameter_name = "country"
+    def __init__(self, request, params, model, model_admin):
+        self.title = "Country"
+        if hasattr(model, "country"):
+            self.parameter_name = "country"
+        elif hasattr(model, "countries"):
+            self.parameter_name = "countries"
+        super().__init__(request, params, model, model_admin)
 
     def lookups(self, request, model_admin):
         countries = []
@@ -180,8 +190,18 @@ class RegionAdmin(BaseChoiceAdmin):
     list_filter = (CountryListFilter,)
 
 
-@admin.register(ManagementAreaGroup)
-class ManagementAreaGroupAdmin(BaseAdmin):
+@admin.register(StakeholderGroup)
+class StakeholderGroupAdmin(BaseChoiceAdmin):
+    pass
+
+
+@admin.register(SupportSource)
+class SupportSourceAdmin(BaseChoiceAdmin):
+    pass
+
+
+@admin.register(ManagementArea)
+class ManagementAreaAdmin(BaseAdmin):
     list_display = ["pk"] + BaseAdmin.list_display
 
 
@@ -190,8 +210,8 @@ class ManagementAreaZoneInline(admin.StackedInline):
     extra = 0
 
 
-@admin.register(ManagementArea)
-class ManagementAreaAdmin(BaseAdmin):
+@admin.register(ManagementAreaVersion)
+class ManagementAreaVersionAdmin(BaseAdmin):
     list_display = [
         "name",
         "date_established",
@@ -202,6 +222,7 @@ class ManagementAreaAdmin(BaseAdmin):
     search_fields = ["name", "governance_type__name"]
     list_filter = ("governance_type", CountryListFilter, "management_area_group")
     readonly_fields = ["management_area_group"] + BaseAdmin.readonly_fields
+    filter_horizontal = ["regions", "stakeholder_groups", "support_sources"]
     inlines = [ManagementAreaZoneInline]
 
 
