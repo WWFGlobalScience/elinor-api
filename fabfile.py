@@ -45,8 +45,8 @@ def down(c):
 
 @task
 def runserver(c):
-    """Enter Django's runserver on 0.0.0.0:8080"""
-    local(_api_cmd("python manage.py runserver 0.0.0.0:8080"))
+    """Enter Django's runserver on 0.0.0.0:8081"""
+    local(_api_cmd("python manage.py runserver 0.0.0.0:8081"))
 
 
 @task

@@ -1,10 +1,12 @@
 from .base import (
     GovernanceType,
+    ManagementAreaVersion,
     ManagementArea,
-    ManagementAreaGroup,
     ManagementAreaZone,
     Profile,
     Region,
+    StakeholderGroup,
+    SupportSource,
 )
 from .assessment import (
     Assessment,

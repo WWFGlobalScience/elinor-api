@@ -33,10 +33,10 @@ class AssessmentPeriodAdmin(BaseAdmin):
         "status",
         "data_policy",
         "year",
-        "management_area",
+        "management_area_version",
     ] + BaseAdmin.list_display
     search_fields = ["assessment__name", "management_area__name"]
-    list_filter = ["status", "data_policy", "year", "management_area"]
+    list_filter = ["status", "data_policy", "year", "management_area_version"]
     inlines = [AssessmentPeriodChangeInline]
 
     @admin.display(description="assessment period", ordering="assessment__name")
