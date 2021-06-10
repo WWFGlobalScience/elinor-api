@@ -5,46 +5,6 @@ from .base import LIKERT_CHOICES, BaseModel, ManagementAreaVersion, Organization
 
 
 class Assessment(BaseModel):
-    name = models.CharField(max_length=255)
-    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, blank=True, null=True)
-
-    def __str__(self):
-        return self.name
-
-
-class Collaborator(BaseModel):
-    ADMIN = 70
-    CONTRIBUTOR = 40
-    OBSERVER = 10
-    ROLES = (
-        (ADMIN, _("admin")),
-        (CONTRIBUTOR, _("contributor")),
-        (OBSERVER, _("observer")),
-    )
-
-    assessment = models.ForeignKey(
-        Assessment, related_name="collaborators", on_delete=models.CASCADE
-    )
-    user = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        related_name="user_assessments",
-        on_delete=models.CASCADE,
-    )
-    role = models.PositiveSmallIntegerField(choices=ROLES)
-
-    @property
-    def is_collector(self):
-        return self.role >= self.CONTRIBUTOR
-
-    @property
-    def is_admin(self):
-        return self.role >= self.ADMIN
-
-    def __str__(self):
-        return f"{self.assessment} {self.user}"
-
-
-class AssessmentPeriod(BaseModel):
     OPEN = 90
     TEST = 80
     PUBLISHED = 10
@@ -69,12 +29,11 @@ class AssessmentPeriod(BaseModel):
         (COMMUNITY, _("community leaders / representatives")),
     )
 
+    name = models.CharField(max_length=255)
+    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, blank=True, null=True)
     status = models.PositiveSmallIntegerField(choices=STATUSES, default=OPEN)
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
-    )
-    assessment = models.ForeignKey(
-        Assessment, on_delete=models.PROTECT, related_name="assessment_periods"
     )
     person_responsible = models.ForeignKey(
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="collaborator_aps"
@@ -105,8 +64,6 @@ class AssessmentPeriod(BaseModel):
     count_community = models.PositiveSmallIntegerField(
         default=0, verbose_name=_("community leader count")
     )
-    focal_area = models.TextField(blank=True)
-    protected_area = models.ForeignKey(ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True)
     consent_given = models.BooleanField(default=False)
     management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
 
@@ -441,17 +398,49 @@ class AssessmentPeriod(BaseModel):
     climatechange_monitored_text = models.TextField(blank=True)
 
     class Meta:
-        unique_together = ("assessment", "management_area_version", "year")
+        unique_together = ("management_area_version", "year")
 
     @property
     def is_published(self):
         return self.status <= self.PUBLISHED
 
     def __str__(self):
-        return f"{self.assessment.name} {self.year}"
+        return f"{self.name} {self.organization} {self.year}"
 
 
-class AssessmentPeriodChange(BaseModel):
+class Collaborator(BaseModel):
+    ADMIN = 70
+    CONTRIBUTOR = 40
+    OBSERVER = 10
+    ROLES = (
+        (ADMIN, _("admin")),
+        (CONTRIBUTOR, _("contributor")),
+        (OBSERVER, _("observer")),
+    )
+
+    assessment = models.ForeignKey(
+        Assessment, related_name="collaborators", on_delete=models.CASCADE
+    )
+    user = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="user_assessments",
+        on_delete=models.CASCADE,
+    )
+    role = models.PositiveSmallIntegerField(choices=ROLES)
+
+    @property
+    def is_collector(self):
+        return self.role >= self.CONTRIBUTOR
+
+    @property
+    def is_admin(self):
+        return self.role >= self.ADMIN
+
+    def __str__(self):
+        return f"{self.assessment} {self.user}"
+
+
+class AssessmentChange(BaseModel):
     SUBMIT = 1
     UNSUBMIT = 2
     DATA_POLICY_PUBLIC = 5
@@ -459,25 +448,25 @@ class AssessmentPeriodChange(BaseModel):
     EDIT = 10
 
     EVENT_TYPES = (
-        (SUBMIT, _("submit Assessment Period")),
-        (UNSUBMIT, _("re-open Assessment Period")),
-        (DATA_POLICY_PUBLIC, _("make Assessment Period public")),
-        (DATA_POLICY_PRIVATE, _("make Assessment Period private")),
-        (EDIT, _("edit Assessment Period")),
+        (SUBMIT, _("submit Assessment")),
+        (UNSUBMIT, _("re-open Assessment")),
+        (DATA_POLICY_PUBLIC, _("make Assessment public")),
+        (DATA_POLICY_PRIVATE, _("make Assessment private")),
+        (EDIT, _("edit Assessment")),
     )
 
-    assessment_period = models.ForeignKey(
-        AssessmentPeriod,
-        related_name="assessment_period_changes",
+    assessment = models.ForeignKey(
+        Assessment,
+        related_name="assessment_changes",
         on_delete=models.CASCADE,
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
-        related_name="user_ap_changes",
+        related_name="user_assessment_changes",
         on_delete=models.CASCADE,
     )
     event_on = models.DateTimeField(auto_now_add=True)
     event_type = models.PositiveSmallIntegerField(choices=EVENT_TYPES)
 
     def __str__(self):
-        return f"{self.event_on} {self.assessment_period} {self.event_type}"
+        return f"{self.event_on} {self.assessment} {self.event_type}"

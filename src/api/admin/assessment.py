@@ -1,17 +1,11 @@
 from django.contrib import admin
 from .base import BaseAdmin
 from ..models.assessment import *
-from ..utils.assessment import log_ap_change
+from ..utils.assessment import log_assessment_change
 
 
-@admin.register(Assessment)
-class AssessmentAdmin(BaseAdmin):
-    list_display = ["name"] + BaseAdmin.list_display
-    search_fields = ["name"]
-
-
-class AssessmentPeriodChangeInline(admin.TabularInline):
-    model = AssessmentPeriodChange
+class AssessmentChangeInline(admin.TabularInline):
+    model = AssessmentChange
     exclude = ("created_by", "updated_by")
     readonly_fields = ("user", "event_on", "event_type")
     can_delete = False
@@ -26,29 +20,25 @@ class AssessmentPeriodChangeInline(admin.TabularInline):
         return False
 
 
-@admin.register(AssessmentPeriod)
-class AssessmentPeriodAdmin(BaseAdmin):
+@admin.register(Assessment)
+class AssessmentAdmin(BaseAdmin):
     list_display = [
-        "selfstr",
+        "name",
         "status",
         "data_policy",
         "year",
         "management_area_version",
     ] + BaseAdmin.list_display
-    search_fields = ["assessment__name", "management_area__name"]
+    search_fields = ["name", "management_area__name", "organization", ]
     list_filter = ["status", "data_policy", "year", "management_area_version"]
-    inlines = [AssessmentPeriodChangeInline]
-
-    @admin.display(description="assessment period", ordering="assessment__name")
-    def selfstr(self, obj):
-        return obj.__str__()
+    inlines = [AssessmentChangeInline]
 
     def save_model(self, request, obj, form, change):
         if change:
-            original_ap = self.model.objects.get(pk=obj.pk)
+            original_assessment = self.model.objects.get(pk=obj.pk)
             editor = request.user
             super().save_model(request, obj, form, change)
-            log_ap_change(original_ap, obj, editor)
+            log_assessment_change(original_assessment, obj, editor)
         else:
             super().save_model(request, obj, form, change)
 

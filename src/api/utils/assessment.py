@@ -1,40 +1,40 @@
-from ..models import AssessmentPeriod, AssessmentPeriodChange
+from ..models import Assessment, AssessmentChange
 
 
-def _log_ap_change(original_ap, updated_ap, field, change_dict, user):
-    original_val = getattr(original_ap, field)
-    updated_val = getattr(updated_ap, field)
+def _log_assessment_change(original_assessment, updated_assessment, field, change_dict, user):
+    original_val = getattr(original_assessment, field)
+    updated_val = getattr(updated_assessment, field)
     if original_val != updated_val:
         event_type = change_dict.get(updated_val)
         if event_type:
-            AssessmentPeriodChange.objects.create(
-                assessment_period=updated_ap, user=user, event_type=event_type
+            AssessmentChange.objects.create(
+                assessment=updated_assessment, user=user, event_type=event_type
             )
 
 
-def log_ap_change(original_ap, updated_ap, user):
+def log_assessment_change(original_assessment, updated_assessment, user):
     if (
-        original_ap.status != updated_ap.status
-        or original_ap.data_policy != updated_ap.data_policy
+        original_assessment.status != updated_assessment.status
+        or original_assessment.data_policy != updated_assessment.data_policy
     ):
         status_changes = {
-            AssessmentPeriod.PUBLISHED: AssessmentPeriodChange.SUBMIT,
-            AssessmentPeriod.OPEN: AssessmentPeriodChange.UNSUBMIT,
+            Assessment.PUBLISHED: AssessmentChange.SUBMIT,
+            Assessment.OPEN: AssessmentChange.UNSUBMIT,
         }
-        _log_ap_change(original_ap, updated_ap, "status", status_changes, user)
+        _log_assessment_change(original_assessment, updated_assessment, "status", status_changes, user)
 
         data_policy_changes = {
-            AssessmentPeriod.PUBLIC: AssessmentPeriodChange.DATA_POLICY_PUBLIC,
-            AssessmentPeriod.PRIVATE: AssessmentPeriodChange.DATA_POLICY_PRIVATE,
+            Assessment.PUBLIC: AssessmentChange.DATA_POLICY_PUBLIC,
+            Assessment.PRIVATE: AssessmentChange.DATA_POLICY_PRIVATE,
         }
-        _log_ap_change(
-            original_ap, updated_ap, "data_policy", data_policy_changes, user
+        _log_assessment_change(
+            original_assessment, updated_assessment, "data_policy", data_policy_changes, user
         )
 
     # uncomment if we want to track all edits (list could get long!)
     # else:
-    #     AssessmentPeriodChange.objects.create(
-    #         assessment_period=updated_ap,
+    #     AssessmentChange.objects.create(
+    #         assessment=updated_assessment,
     #         user=user,
-    #         event_type=AssessmentPeriodChange.EDIT
+    #         event_type=AssessmentChange.EDIT
     #     )

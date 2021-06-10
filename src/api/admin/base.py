@@ -5,6 +5,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.contrib.gis.admin import OSMGeoAdmin
 from django.http import HttpResponse
+from django.urls import reverse
 from django.utils.html import format_html
 from ..models.base import *
 
@@ -81,6 +82,28 @@ export_model_display_as_csv.short_description = (
 export_model_all_as_csv.short_description = (
     "Export selected %(verbose_name_plural)s to CSV (all fields)"
 )
+
+
+def linkify(field_name):
+    """
+    Converts a foreign key value into clickable links.
+
+    If field_name is 'parent', link text will be str(obj.parent)
+    Link will be admin url for the admin url for obj.parent.id:change
+    """
+
+    def _linkify(obj):
+        linked_obj = getattr(obj, field_name)
+        if linked_obj is None:
+            return '-'
+        app_label = linked_obj._meta.app_label
+        model_name = linked_obj._meta.model_name
+        view_name = f'admin:{app_label}_{model_name}_change'
+        link_url = reverse(view_name, args=[linked_obj.pk])
+        return format_html('<a href="{}">{}</a>', link_url, linked_obj)
+
+    _linkify.short_description = field_name  # Sets column name
+    return _linkify
 
 
 @admin.display(description="country", ordering="country")
@@ -179,6 +202,11 @@ class GovernanceTypeAdmin(BaseChoiceAdmin):
     pass
 
 
+@admin.register(ManagementAuthority)
+class ManagementAuthorityAdmin(BaseChoiceAdmin):
+    pass
+
+
 @admin.register(ProtectedArea)
 class ProtectedAreaAdmin(BaseChoiceAdmin):
     pass
@@ -202,32 +230,19 @@ class SupportSourceAdmin(BaseChoiceAdmin):
 
 @admin.register(ManagementArea)
 class ManagementAreaAdmin(BaseAdmin):
-    list_display = ["pk"] + BaseAdmin.list_display
-
-
-class ManagementAreaZoneInline(admin.StackedInline):
-    model = ManagementAreaZone
-    extra = 0
+    list_display = ["pk", linkify(field_name="parent")] + BaseAdmin.list_display
 
 
 @admin.register(ManagementAreaVersion)
 class ManagementAreaVersionAdmin(BaseAdmin):
     list_display = [
         "name",
-        "date_established",
+        "version_date",
         "governance_type",
         country_flag,
-        "management_area_group",
+        "management_area",
     ] + BaseAdmin.list_display
     search_fields = ["name", "governance_type__name"]
-    list_filter = ("governance_type", CountryListFilter, "management_area_group")
-    readonly_fields = ["management_area_group"] + BaseAdmin.readonly_fields
+    list_filter = ("governance_type", CountryListFilter, "management_area")
+    # readonly_fields = ["management_area"] + BaseAdmin.readonly_fields
     filter_horizontal = ["regions", "stakeholder_groups", "support_sources"]
-    inlines = [ManagementAreaZoneInline]
-
-
-@admin.register(ManagementAreaZone)
-class ManagementAreaZoneAdmin(BaseAdmin):
-    list_display = ["name", "access_level"] + BaseAdmin.list_display
-    search_fields = ["name"]
-    list_filter = ("access_level",)
