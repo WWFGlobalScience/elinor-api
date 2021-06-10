@@ -74,8 +74,19 @@ class GovernanceType(BaseChoiceModel):
     pass
 
 
+class ManagementAuthority(BaseChoiceModel):
+
+    class Meta:
+        ordering = ["name", ]
+        verbose_name_plural = "management authorities"
+
+
 class ProtectedArea(BaseChoiceModel):
-    pass
+    wdpa_id = models.PositiveIntegerField(blank=True, null=True, verbose_name="WDPA ID")
+
+
+class Region(BaseChoiceModel):
+    country = CountryField()
 
 
 class StakeholderGroup(BaseChoiceModel):
@@ -86,11 +97,9 @@ class SupportSource(BaseChoiceModel):
     pass
 
 
-class Region(BaseChoiceModel):
-    country = CountryField()
-
-
 class ManagementArea(BaseModel):
+    parent = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True)
+
     def __str__(self):
         return str(self.pk)
 
@@ -105,13 +114,29 @@ class ManagementAreaVersion(BaseModel):
         (INTERNATIONAL, _(INTERNATIONAL)),
     )
 
-    management_area_group = models.ForeignKey(
+    OPEN_ACCESS = 90
+    PARTIALLY_RESTRICTED = 50
+    FULLY_RESTRICTED = 10
+    ACCESS_CHOICES = (
+        (OPEN_ACCESS, _("Open access (open for extraction and entering)")),
+        (PARTIALLY_RESTRICTED, _("Fully restricted access (total extraction ban)")),
+        (
+            FULLY_RESTRICTED,
+            _(
+                "Partially Restricted (e.g., periodic closures, restriction by use type, restriction by "
+                "activity type, species restrictions, gear restrictions, etc.)"
+            ),
+        ),
+    )
+
+    management_area = models.ForeignKey(
         ManagementArea, on_delete=models.PROTECT
     )
     name = models.CharField(max_length=255)
-    wdpa_id = models.PositiveIntegerField(blank=True, null=True, verbose_name="WDPA ID")
+    protected_area = models.ForeignKey(ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True)
     date_established = models.DateField(null=True, blank=True)
-    authority_name = models.CharField(max_length=255, blank=True)
+    version_date = models.DateField()
+    authority_name = models.ForeignKey(ManagementAuthority, on_delete=models.SET_NULL, blank=True, null=True)
     recognition_level = models.CharField(max_length=100, choices=RECOGNITION_TYPES, blank=True, null=True)
     stakeholder_groups = models.ManyToManyField(StakeholderGroup, blank=True)
     support_sources = models.ManyToManyField(SupportSource, blank=True)
@@ -133,55 +158,18 @@ class ManagementAreaVersion(BaseModel):
     import_file = models.FileField(upload_to="upload", blank=True, null=True)
     map_image = models.ImageField(upload_to="upload", blank=True, null=True)
     geospatial_sources = models.TextField(blank=True)
+    access_level = models.PositiveSmallIntegerField(
+        choices=ACCESS_CHOICES, blank=True, null=True
+    )
+    access_level_description = models.TextField(blank=True)
 
     class Meta:
         verbose_name = _("management area version")
         ordering = ["name", "date_established"]
 
-    def save(self, *args, **kwargs):
-        if self.management_area_group_id is None:
-            new_magroup = ManagementArea.objects.create()
-            self.management_area_group = new_magroup
-        super().save(*args, **kwargs)
-
     def __str__(self):
-        _date = ""
         _countries = ""
-        if self.date_established:
-            _date = f" [{self.date_established}]"
         if self.countries:
             # noinspection PyTypeChecker
             _countries = f" [{', '.join([c.name for c in self.countries])}]"
-        return f"{self.name}{_date}{_countries}"
-
-
-class ManagementAreaZone(BaseModel):
-    OPEN_ACCESS = 90
-    PARTIALLY_RESTRICTED = 50
-    FULLY_RESTRICTED = 10
-    ACCESS_CHOICES = (
-        (OPEN_ACCESS, _("Open access (open for extraction and entering)")),
-        (PARTIALLY_RESTRICTED, _("Fully restricted access (total extraction ban)")),
-        (
-            FULLY_RESTRICTED,
-            _(
-                "Partially Restricted (e.g., periodic closures, restriction by use type, restriction by "
-                "activity type, species restrictions, gear restrictions, etc.)"
-            ),
-        ),
-    )
-
-    name = models.CharField(max_length=255)
-    management_area = models.ForeignKey(
-        ManagementAreaVersion, on_delete=models.CASCADE, related_name="ma_zones"
-    )
-    access_level = models.PositiveSmallIntegerField(
-        choices=ACCESS_CHOICES, default=OPEN_ACCESS
-    )
-    description = models.TextField(blank=True)
-
-    class Meta:
-        verbose_name = _("management area zone")
-
-    def __str__(self):
-        return self.name
+        return f"{self.name} [{self.version_date}]{_countries}"
