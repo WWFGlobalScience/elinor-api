@@ -158,10 +158,6 @@ class ManagementAreaVersion(BaseModel):
     import_file = models.FileField(upload_to="upload", blank=True, null=True)
     map_image = models.ImageField(upload_to="upload", blank=True, null=True)
     geospatial_sources = models.TextField(blank=True)
-    access_level = models.PositiveSmallIntegerField(
-        choices=ACCESS_CHOICES, blank=True, null=True
-    )
-    access_level_description = models.TextField(blank=True)
 
     class Meta:
         verbose_name = _("management area version")
@@ -173,3 +169,35 @@ class ManagementAreaVersion(BaseModel):
             # noinspection PyTypeChecker
             _countries = f" [{', '.join([c.name for c in self.countries])}]"
         return f"{self.name} [{self.version_date}]{_countries}"
+
+
+class ManagementAreaZone(BaseModel):
+    OPEN_ACCESS = 90
+    PARTIALLY_RESTRICTED = 50
+    FULLY_RESTRICTED = 10
+    ACCESS_CHOICES = (
+        (OPEN_ACCESS, _("Open access (open for extraction and entering)")),
+        (PARTIALLY_RESTRICTED, _("Fully restricted access (total extraction ban)")),
+        (
+            FULLY_RESTRICTED,
+            _(
+                "Partially Restricted (e.g., periodic closures, restriction by use type, restriction by "
+                "activity type, species restrictions, gear restrictions, etc.)"
+            ),
+        ),
+    )
+
+    name = models.CharField(max_length=255)
+    management_area = models.ForeignKey(
+        ManagementAreaVersion, on_delete=models.CASCADE, related_name="ma_zones"
+    )
+    access_level = models.PositiveSmallIntegerField(
+        choices=ACCESS_CHOICES, default=OPEN_ACCESS
+    )
+    description = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = _("management area zone")
+
+    def __str__(self):
+        return self.name
