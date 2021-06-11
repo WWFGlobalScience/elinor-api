@@ -3,6 +3,7 @@ from .base import (
     ManagementArea,
     ManagementAreaVersion,
     ManagementAuthority,
+    ManagementAreaZone,
     Organization,
     Profile,
     ProtectedArea,
