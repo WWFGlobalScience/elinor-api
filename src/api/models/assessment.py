@@ -1,7 +1,8 @@
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.utils.translation import ugettext_lazy as _
-from .base import LIKERT_CHOICES, BaseModel, ManagementAreaVersion, Organization, ProtectedArea
+from .base import LIKERT_CHOICES, BaseModel, Organization
+from .management import ManagementAreaVersion
 
 
 class Assessment(BaseModel):
@@ -30,13 +31,17 @@ class Assessment(BaseModel):
     )
 
     name = models.CharField(max_length=255)
-    organization = models.ForeignKey(Organization, on_delete=models.SET_NULL, blank=True, null=True)
+    organization = models.ForeignKey(
+        Organization, on_delete=models.SET_NULL, blank=True, null=True
+    )
     status = models.PositiveSmallIntegerField(choices=STATUSES, default=OPEN)
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
     )
     person_responsible = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="collaborator_aps"
+        settings.AUTH_USER_MODEL,
+        on_delete=models.PROTECT,
+        related_name="collaborator_aps",
     )
     person_responsible_role = models.PositiveSmallIntegerField(
         choices=PERSON_RESPONSIBLE_ROLES
@@ -321,9 +326,7 @@ class Assessment(BaseModel):
         choices=LIKERT_CHOICES,
         null=True,
         blank=True,
-        verbose_name=_(
-            "Are there enough people employed or engaged to manage the MA?"
-        ),
+        verbose_name=_("Are there enough people employed or engaged to manage the MA?"),
     )
     sufficient_staff_text = models.TextField(blank=True)
     staff_capacity = models.PositiveSmallIntegerField(
@@ -381,9 +384,7 @@ class Assessment(BaseModel):
         choices=LIKERT_CHOICES,
         null=True,
         blank=True,
-        verbose_name=_(
-            "Is the MA consciously managed to adapt to climate change?"
-        ),
+        verbose_name=_("Is the MA consciously managed to adapt to climate change?"),
     )
     climatechange_managed_text = models.TextField(blank=True)
     climatechange_monitored = models.PositiveSmallIntegerField(

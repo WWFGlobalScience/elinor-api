@@ -9,7 +9,6 @@ from django.urls import reverse
 from django.utils.html import format_html
 from ..models.base import *
 
-
 UserModel = get_user_model()
 
 
@@ -95,10 +94,10 @@ def linkify(field_name):
     def _linkify(obj):
         linked_obj = getattr(obj, field_name)
         if linked_obj is None:
-            return '-'
+            return "-"
         app_label = linked_obj._meta.app_label
         model_name = linked_obj._meta.model_name
-        view_name = f'admin:{app_label}_{model_name}_change'
+        view_name = f"admin:{app_label}_{model_name}_change"
         link_url = reverse(view_name, args=[linked_obj.pk])
         return format_html('<a href="{}">{}</a>', link_url, linked_obj)
 
@@ -226,36 +225,3 @@ class StakeholderGroupAdmin(BaseChoiceAdmin):
 @admin.register(SupportSource)
 class SupportSourceAdmin(BaseChoiceAdmin):
     pass
-
-
-@admin.register(ManagementArea)
-class ManagementAreaAdmin(BaseAdmin):
-    list_display = ["pk", linkify(field_name="parent")] + BaseAdmin.list_display
-
-
-class ManagementAreaZoneInline(admin.StackedInline):
-    model = ManagementAreaZone
-    extra = 0
-
-
-@admin.register(ManagementAreaVersion)
-class ManagementAreaVersionAdmin(BaseAdmin):
-    list_display = [
-        "name",
-        "version_date",
-        "governance_type",
-        country_flag,
-        "management_area",
-    ] + BaseAdmin.list_display
-    search_fields = ["name", "governance_type__name"]
-    list_filter = ("governance_type", CountryListFilter, "management_area")
-    # readonly_fields = ["management_area"] + BaseAdmin.readonly_fields
-    filter_horizontal = ["regions", "stakeholder_groups", "support_sources"]
-    inlines = [ManagementAreaZoneInline]
-
-
-@admin.register(ManagementAreaZone)
-class ManagementAreaZoneAdmin(BaseAdmin):
-    list_display = ["name", "access_level"] + BaseAdmin.list_display
-    search_fields = ["name"]
-    list_filter = ("access_level",)
