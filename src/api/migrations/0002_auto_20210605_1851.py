@@ -8,26 +8,30 @@ def add_predefined_choices(apps, schema_editor):
     StakeholderGroup = apps.get_model("api", "StakeholderGroup")
     SupportSource = apps.get_model("api", "SupportSource")
 
-    StakeholderGroup.objects.using(db_alias).bulk_create([
-        StakeholderGroup(name="local community"),
-        StakeholderGroup(name="user group"),
-        StakeholderGroup(name="NGO"),
-        StakeholderGroup(name="academic"),
-        StakeholderGroup(name="government"),
-        StakeholderGroup(name="private sector"),
-        StakeholderGroup(name="indigenous peoples"),
-    ])
+    StakeholderGroup.objects.using(db_alias).bulk_create(
+        [
+            StakeholderGroup(name="local community"),
+            StakeholderGroup(name="user group"),
+            StakeholderGroup(name="NGO"),
+            StakeholderGroup(name="academic"),
+            StakeholderGroup(name="government"),
+            StakeholderGroup(name="private sector"),
+            StakeholderGroup(name="indigenous peoples"),
+        ]
+    )
 
-    SupportSource.objects.using(db_alias).bulk_create([
-        SupportSource(name="conservation NGOs"),
-        SupportSource(name="other NGOs"),
-        SupportSource(name="international organizations"),
-        SupportSource(name="national government"),
-        SupportSource(name="provincial government"),
-        SupportSource(name="local government"),
-        SupportSource(name="academia (university)"),
-        SupportSource(name="private sector"),
-    ])
+    SupportSource.objects.using(db_alias).bulk_create(
+        [
+            SupportSource(name="conservation NGOs"),
+            SupportSource(name="other NGOs"),
+            SupportSource(name="international organizations"),
+            SupportSource(name="national government"),
+            SupportSource(name="provincial government"),
+            SupportSource(name="local government"),
+            SupportSource(name="academia (university)"),
+            SupportSource(name="private sector"),
+        ]
+    )
 
 
 def remove_predefined_choices(apps, schema_editor):
@@ -45,7 +49,9 @@ def remove_predefined_choices(apps, schema_editor):
 
     SupportSource.objects.using(db_alias).filter(name="conservation NGOs").delete()
     SupportSource.objects.using(db_alias).filter(name="other NGOs").delete()
-    SupportSource.objects.using(db_alias).filter(name="international organizations").delete()
+    SupportSource.objects.using(db_alias).filter(
+        name="international organizations"
+    ).delete()
     SupportSource.objects.using(db_alias).filter(name="national government").delete()
     SupportSource.objects.using(db_alias).filter(name="provincial government").delete()
     SupportSource.objects.using(db_alias).filter(name="local government").delete()
@@ -56,7 +62,7 @@ def remove_predefined_choices(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0001_initial'),
+        ("api", "0001_initial"),
     ]
 
     operations = [

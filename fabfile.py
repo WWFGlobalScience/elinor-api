@@ -87,7 +87,7 @@ def shellplus(c):
 @task
 def dbrestore(c, keyname="local"):
     """Restore the database from a named s3 key
-        ie - fab dbrestore --keyname dev
+    ie - fab dbrestore --keyname dev
     """
     local(_api_cmd(f"python manage.py dbrestore {keyname}"))
 
@@ -95,7 +95,7 @@ def dbrestore(c, keyname="local"):
 @task
 def dbbackup(c, keyname="local"):
     """Backup the database from a named s3 key
-        ie - fab dbbackup --keyname dev
+    ie - fab dbbackup --keyname dev
     """
     local(_api_cmd(f"python manage.py dbbackup {keyname}"))
 

@@ -29,7 +29,11 @@ class AssessmentAdmin(BaseAdmin):
         "year",
         "management_area_version",
     ] + BaseAdmin.list_display
-    search_fields = ["name", "management_area__name", "organization", ]
+    search_fields = [
+        "name",
+        "management_area__name",
+        "organization",
+    ]
     list_filter = ["status", "data_policy", "year", "management_area_version"]
     inlines = [AssessmentChangeInline]
 

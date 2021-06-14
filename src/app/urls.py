@@ -21,4 +21,5 @@ from api.urls import api_urls
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("v1/", include(api_urls), name="api-root"),
+    path("api-auth/", include("rest_framework.urls", namespace="rest_framework")),
 ]
