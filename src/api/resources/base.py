@@ -9,9 +9,10 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import serializers, viewsets
+from rest_framework import permissions, serializers, viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from dj_rest_auth.registration.serializers import RegisterSerializer
 from ..models import (
     GovernanceType,
     ManagementAuthority,
@@ -21,6 +22,7 @@ from ..models import (
     StakeholderGroup,
     SupportSource,
 )
+from ..permissions import IsAuthenticatedAndReadOnly
 
 
 User = get_user_model()
@@ -124,7 +126,43 @@ class UserSerializer(BaseAPISerializer):
 
     class Meta:
         model = User
-        exclude = ["groups", "user_permissions"]
+        exclude = ["groups", "user_permissions", "password", "is_staff", "is_active"]
+        read_only_fields = ["date_joined", "is_superuser"]
+
+
+# for dj-rest-auth
+class UserRegistrationSerializer(RegisterSerializer):
+    first_name = serializers.CharField(max_length=150)
+    last_name = serializers.CharField(max_length=150)
+    affiliation = serializers.PrimaryKeyRelatedField(
+        allow_null=True,
+        queryset=Organization.objects.all(),
+    )
+    accept_tor = serializers.BooleanField(
+        label="Accept ToR",
+    )
+
+    def save(self, request):
+        first_name = self.validated_data.get("first_name")
+        last_name = self.validated_data.get("last_name")
+        affiliation = self.validated_data.get("affiliation")
+        accept_tor = self.validated_data.get("accept_tor", False)
+        if not accept_tor:
+            missing_tor_message = "The Terms of Reference must be accepted in order to register a new account"
+            # This does the right thing but does cause a 500 when wrapped in the DRF html view
+            raise serializers.ValidationError(missing_tor_message)
+        user = super().save(request)
+        user.first_name = first_name
+        user.last_name = last_name
+        user.save()
+        profile = user.profile
+        profile.affiliation = affiliation
+        profile.accept_tor = accept_tor
+        profile.created_by = user
+        profile.updated_by = user
+        profile.save()
+
+        return user
 
 
 class UserFilterSet(FilterSet):
@@ -153,6 +191,8 @@ class UserFilterSet(FilterSet):
 
 
 class UserViewSet(BaseAPIViewSet):
+    http_method_names = [option.lower() for option in permissions.SAFE_METHODS]
+    permission_classes = [IsAuthenticatedAndReadOnly]
     queryset = User.objects.all()
     ordering = ["username"]
     serializer_class = UserSerializer
