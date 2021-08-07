@@ -1,3 +1,5 @@
+from allauth.account.admin import EmailAddress
+from allauth.account.utils import send_email_confirmation
 from django.contrib.auth import get_user_model
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
@@ -9,9 +11,14 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, serializers, viewsets
+from rest_framework import permissions, serializers, status, viewsets
+from rest_framework.exceptions import APIException
 from rest_framework.filters import OrderingFilter, SearchFilter
+from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny
+from rest_framework.response import Response
+from rest_framework.views import APIView
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from ..models import (
     GovernanceType,
@@ -163,6 +170,34 @@ class UserRegistrationSerializer(RegisterSerializer):
         profile.save()
 
         return user
+
+
+class NewEmailConfirmation(APIView):
+    permission_classes = [AllowAny]
+
+    def post(self, request):
+        user = get_object_or_404(User, email=request.data["email"])
+        emailAddress = EmailAddress.objects.filter(user=user, verified=True).exists()
+
+        if emailAddress:
+            return Response(
+                {"message": "This email is already verified"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        else:
+            try:
+                send_email_confirmation(request, user=user)
+                return Response(
+                    {"message": "Email confirmation sent"},
+                    status=status.HTTP_201_CREATED,
+                )
+            except APIException:
+                return Response(
+                    {
+                        "message": "This email does not exist, please create a new account"
+                    },
+                    status=status.HTTP_403_FORBIDDEN,
+                )
 
 
 class UserFilterSet(FilterSet):

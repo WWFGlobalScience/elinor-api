@@ -23,10 +23,15 @@ DEBUG = False
 DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
+EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+# TODO: replace with frontend login url?
+LOGIN_URL = "http://localhost:8081/rest-auth/login"
 if ENVIRONMENT not in ("prod",):
     DEBUG = True
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    LOGIN_URL = "http://localhost:8081/rest-auth/login"
 
 
 # Application definition
@@ -73,7 +78,9 @@ ROOT_URLCONF = "app.urls"
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
-        "DIRS": [],
+        "DIRS": [
+            os.path.join(BASE_DIR, "api/templates"),
+        ],
         "APP_DIRS": True,
         "OPTIONS": {
             "context_processors": [
@@ -175,7 +182,7 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = "API System <{}>".format(EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = "Elinor API <{}>".format(EMAIL_HOST_USER)
 CORS_ORIGIN_ALLOW_ALL = True
 
 LOGGING = {
@@ -202,15 +209,14 @@ APPNAME = "elinor"
 SITE_ID = 1
 REST_SESSION_LOGIN = False
 ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_EMAIL_VERIFICATION = "none"
-# When we have email set up
-# ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 
 REST_AUTH_SERIALIZERS = {
-    'USER_DETAILS_SERIALIZER': 'api.resources.base.UserSerializer',
+    "USER_DETAILS_SERIALIZER": "api.resources.base.UserSerializer",
 }
 REST_AUTH_REGISTER_SERIALIZERS = {
-    'REGISTER_SERIALIZER': 'api.resources.base.UserRegistrationSerializer',
+    "REGISTER_SERIALIZER": "api.resources.base.UserRegistrationSerializer",
 }
 
 # Needed?
@@ -220,4 +226,3 @@ REST_AUTH_REGISTER_SERIALIZERS = {
 #     # Needed to login by username in Django admin, regardless of allauth
 #     'django.contrib.auth.backends.ModelBackend',
 # ]
-
