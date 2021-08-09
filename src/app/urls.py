@@ -16,12 +16,36 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import include, path
 from api.urls import api_urls
+from dj_rest_auth.views import PasswordResetConfirmView
+from api.resources.base import NewEmailConfirmation
+from dj_rest_auth.registration.views import VerifyEmailView, ConfirmEmailView
 
 
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("v1/", include(api_urls), name="api-root"),
-    path("api-sessionauth/", include("rest_framework.urls", namespace="rest_framework")),
+    path(
+        "api-sessionauth/", include("rest_framework.urls", namespace="rest_framework")
+    ),
     path("rest-auth/", include("dj_rest_auth.urls")),
+    path(
+        "rest-auth/registration/account-confirm-email/<str:key>/",
+        ConfirmEmailView.as_view(),
+    ),
+    path(
+        "rest-auth/registration/resend-verification-email/",
+        NewEmailConfirmation.as_view(),
+        name="resend-email-confirmation",
+    ),
     path("rest-auth/registration/", include("dj_rest_auth.registration.urls")),
+    path(
+        "rest-auth/account-confirm-email/",
+        VerifyEmailView.as_view(),
+        name="account_email_verification_sent",
+    ),
+    path(
+        "rest-auth/password/reset/confirm/<slug:uidb64>/<slug:token>/",
+        PasswordResetConfirmView.as_view(),
+        name="password_reset_confirm",
+    ),
 ]
