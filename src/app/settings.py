@@ -161,11 +161,12 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ),
     "DEFAULT_FILTER_BACKENDS": ("django_filters.rest_framework.DjangoFilterBackend",),
-    "DEFAULT_PERMISSION_CLASSES": ("rest_framework.permissions.IsAuthenticated",),
+    "DEFAULT_PERMISSION_CLASSES": ("api.permissions.DefaultPermission",),
     "DEFAULT_RENDERER_CLASSES": (
         "rest_framework.renderers.JSONRenderer",
         "rest_framework.renderers.BrowsableAPIRenderer",  #
     ),
+    "EXCEPTION_HANDLER": "api.resources.api_exception_handler",
 }
 
 AWS_BACKUP_BUCKET = os.environ.get("AWS_BACKUP_BUCKET")

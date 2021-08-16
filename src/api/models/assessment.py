@@ -6,6 +6,8 @@ from .management import ManagementAreaVersion
 
 
 class Assessment(BaseModel):
+    assessment_lookup = ""
+
     OPEN = 90
     TEST = 80
     PUBLISHED = 10
@@ -49,9 +51,7 @@ class Assessment(BaseModel):
     year = models.PositiveSmallIntegerField()
     management_area_version = models.ForeignKey(
         ManagementAreaVersion,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.PROTECT,
         related_name="ma_assessments",
     )
     count_manager = models.PositiveSmallIntegerField(
@@ -400,6 +400,7 @@ class Assessment(BaseModel):
 
     class Meta:
         unique_together = ("management_area_version", "year")
+        ordering = ["name", "year"]
 
     @property
     def is_published(self):
@@ -410,6 +411,8 @@ class Assessment(BaseModel):
 
 
 class Collaborator(BaseModel):
+    assessment_lookup = "assessment__"
+
     ADMIN = 70
     CONTRIBUTOR = 40
     OBSERVER = 10
@@ -437,11 +440,16 @@ class Collaborator(BaseModel):
     def is_admin(self):
         return self.role >= self.ADMIN
 
+    class Meta:
+        unique_together = ("assessment", "user")
+
     def __str__(self):
         return f"{self.assessment} {self.user}"
 
 
 class AssessmentChange(BaseModel):
+    assessment_lookup = "assessment__"
+
     SUBMIT = 1
     UNSUBMIT = 2
     DATA_POLICY_PUBLIC = 5
