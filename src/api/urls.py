@@ -1,6 +1,5 @@
-from rest_framework import routers
-
 from .resources.base import (
+    ElinorDefaultRouter,
     GovernanceTypeViewSet,
     ManagementAuthorityViewSet,
     OrganizationViewSet,
@@ -22,7 +21,7 @@ from .resources.assessment import (
 )
 
 
-router = routers.DefaultRouter()
+router = ElinorDefaultRouter()
 
 router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")

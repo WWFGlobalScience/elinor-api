@@ -10,6 +10,10 @@ from ..models.management import (
     ManagementAreaVersion,
     ManagementAreaZone,
 )
+from ..permissions import (
+    ReadOnlyOrAuthenticatedCreate,
+    ReadOnlyOrAuthenticatedCreateOrOwner,
+)
 
 
 class ManagementAreaSerializer(BaseAPISerializer):
@@ -29,6 +33,9 @@ class ManagementAreaViewSet(BaseAPIViewSet):
     ordering = ["pk"]
     serializer_class = ManagementAreaSerializer
     filter_class = ManagementAreaFilterSet
+    permission_classes = [
+        ReadOnlyOrAuthenticatedCreate,
+    ]
 
 
 class ManagementAreaVersionSerializer(CountryFieldMixin, BaseAPISerializer):
@@ -54,6 +61,9 @@ class ManagementAreaVersionViewSet(BaseAPIViewSet):
     serializer_class = ManagementAreaVersionSerializer
     filter_class = ManagementAreaVersionFilterSet
     search_fields = ["name", "protected_area__name", "management_authority__name"]
+    permission_classes = [
+        ReadOnlyOrAuthenticatedCreateOrOwner,
+    ]
 
 
 class ManagementAreaZoneSerializer(BaseAPISerializer):
@@ -74,3 +84,6 @@ class ManagementAreaZoneViewSet(BaseAPIViewSet):
     serializer_class = ManagementAreaZoneSerializer
     filter_class = ManagementAreaZoneFilterSet
     search_fields = ["name", "management_area_version__name"]
+    permission_classes = [
+        ReadOnlyOrAuthenticatedCreateOrOwner,
+    ]

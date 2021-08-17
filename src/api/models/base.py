@@ -41,7 +41,7 @@ class BaseModel(models.Model):
 
 
 class BaseChoiceModel(BaseModel):
-    name = models.CharField(max_length=255)
+    name = models.CharField(max_length=255, unique=True)
 
     class Meta:
         abstract = True
@@ -91,7 +91,11 @@ class ProtectedArea(BaseChoiceModel):
 
 
 class Region(BaseChoiceModel):
+    name = models.CharField(max_length=255)
     country = CountryField()
+
+    class Meta:
+        unique_together = ("name", "country")
 
 
 class StakeholderGroup(BaseChoiceModel):

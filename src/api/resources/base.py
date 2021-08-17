@@ -1,3 +1,4 @@
+from collections import OrderedDict
 from allauth.account.admin import EmailAddress
 from allauth.account.utils import send_email_confirmation
 from django.contrib.auth import get_user_model
@@ -11,7 +12,7 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, serializers, status, viewsets
+from rest_framework import permissions, routers, serializers, status, viewsets
 from rest_framework.exceptions import APIException
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.generics import get_object_or_404
@@ -29,10 +30,26 @@ from ..models import (
     StakeholderGroup,
     SupportSource,
 )
-from ..permissions import IsAuthenticatedAndReadOnly
+from ..permissions import AuthenticatedAndReadOnly, ReadOnlyOrAuthenticatedCreate
 
 
 User = get_user_model()
+
+
+class APIRootView(routers.APIRootView):
+    permission_classes = [permissions.IsAuthenticatedOrReadOnly]
+
+
+class ElinorDefaultRouter(routers.DefaultRouter):
+    APIRootView = APIRootView
+
+    def get_api_root_view(self, api_urls=None):
+        api_root_dict = OrderedDict()
+        list_name = self.routes[0].name
+        for prefix, viewset, basename in self.registry:
+            api_root_dict[prefix] = list_name.format(basename=basename)
+
+        return self.APIRootView.as_view(api_root_dict=api_root_dict)
 
 
 class StandardResultPagination(PageNumberPagination):
@@ -81,6 +98,9 @@ class BaseChoiceViewSet(BaseAPIViewSet):
     ordering = ["name"]
     filter_class = ChoiceFilterSet
     search_fields = ["name"]
+    permission_classes = [
+        ReadOnlyOrAuthenticatedCreate,
+    ]
 
 
 class UserSerializer(BaseAPISerializer):
@@ -133,7 +153,14 @@ class UserSerializer(BaseAPISerializer):
 
     class Meta:
         model = User
-        exclude = ["groups", "user_permissions", "password", "is_staff", "is_active"]
+        exclude = [
+            "groups",
+            "user_permissions",
+            "password",
+            "is_staff",
+            "is_active",
+            "email",
+        ]
         read_only_fields = ["date_joined", "is_superuser"]
 
 
@@ -201,38 +228,41 @@ class NewEmailConfirmation(APIView):
 
 
 class UserFilterSet(FilterSet):
-    created_on = DateTimeFromToRangeFilter(
-        field_name="profile__created_on", label="created_on"
-    )
-    created_by = ModelChoiceFilter(
-        queryset=User.objects.order_by("username"),
-        field_name="profile__created_by",
-        label="created_by",
-    )
-    updated_on = DateTimeFromToRangeFilter(
-        field_name="profile__updated_on", label="updated_on"
-    )
-    updated_by = ModelChoiceFilter(
-        queryset=User.objects.order_by("username"),
-        field_name="profile__updated_by",
-        label="updated_by",
-    )
-    last_login = DateTimeFromToRangeFilter()
-    date_joined = DateTimeFromToRangeFilter()
+    # created_on = DateTimeFromToRangeFilter(
+    #     field_name="profile__created_on", label="created_on"
+    # )
+    # created_by = ModelChoiceFilter(
+    #     queryset=User.objects.order_by("username"),
+    #     field_name="profile__created_by",
+    #     label="created_by",
+    # )
+    # updated_on = DateTimeFromToRangeFilter(
+    #     field_name="profile__updated_on", label="updated_on"
+    # )
+    # updated_by = ModelChoiceFilter(
+    #     queryset=User.objects.order_by("username"),
+    #     field_name="profile__updated_by",
+    #     label="updated_by",
+    # )
+    # last_login = DateTimeFromToRangeFilter()
+    # date_joined = DateTimeFromToRangeFilter()
 
     class Meta:
         model = User
-        exclude = ["groups", "user_permissions", "password"]
+        fields = ["username", "first_name", "last_name"]
+        # exclude = ["groups", "user_permissions", "password"]
 
 
 class UserViewSet(BaseAPIViewSet):
     http_method_names = [option.lower() for option in permissions.SAFE_METHODS]
-    permission_classes = [IsAuthenticatedAndReadOnly]
+    permission_classes = [
+        AuthenticatedAndReadOnly,
+    ]
     queryset = User.objects.all()
     ordering = ["username"]
     serializer_class = UserSerializer
     filter_class = UserFilterSet
-    search_fields = ["username", "first_name", "last_name", "email"]
+    search_fields = ["username", "first_name", "last_name"]
 
 
 class OrganizationSerializer(BaseAPISerializer):
