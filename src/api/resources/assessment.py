@@ -1,7 +1,7 @@
 from django.db.models import Q
 from django_filters import DateTimeFromToRangeFilter, ModelChoiceFilter
 from rest_framework import serializers
-from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet, User
+from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet, user_choice_qs
 from ..models.assessment import Assessment, AssessmentChange, Collaborator
 from ..permissions import (
     ReadOnly,
@@ -24,13 +24,18 @@ def get_assessment_related_queryset(user, model):
 
 
 class AssessmentSerializer(BaseAPISerializer):
+    person_responsible = serializers.PrimaryKeyRelatedField(
+        queryset=user_choice_qs,
+        default=serializers.CurrentUserDefault(),
+    )
+
     class Meta:
         model = Assessment
         exclude = []
 
 
 class AssessmentFilterSet(BaseAPIFilterSet):
-    person_responsible = ModelChoiceFilter(queryset=User.objects.order_by("username"))
+    person_responsible = ModelChoiceFilter(queryset=user_choice_qs)
 
     class Meta:
         model = Assessment
@@ -50,8 +55,8 @@ class AssessmentViewSet(BaseAPIViewSet):
         return get_assessment_related_queryset(self.request.user, Assessment)
 
     def perform_create(self, serializer):
-        assessment = serializer.save()
         user = self.request.user
+        assessment = serializer.save()
         Collaborator.objects.create(
             assessment=assessment, user=user, role=Collaborator.ADMIN
         )
@@ -79,7 +84,7 @@ class AssessmentChangeSerializer(BaseAPISerializer):
 
 
 class AssessmentChangeFilterSet(BaseAPIFilterSet):
-    user = ModelChoiceFilter(queryset=User.objects.order_by("username"))
+    user = ModelChoiceFilter(queryset=user_choice_qs)
     event_on = DateTimeFromToRangeFilter()
 
     class Meta:
@@ -107,7 +112,7 @@ class CollaboratorSerializer(BaseAPISerializer):
 
 
 class CollaboratorFilterSet(BaseAPIFilterSet):
-    user = ModelChoiceFilter(queryset=User.objects.order_by("username"))
+    user = ModelChoiceFilter(queryset=user_choice_qs)
 
     class Meta:
         model = Collaborator
