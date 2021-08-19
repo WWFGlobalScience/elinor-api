@@ -34,6 +34,7 @@ from ..permissions import AuthenticatedAndReadOnly, ReadOnlyOrAuthenticatedCreat
 
 
 User = get_user_model()
+user_choice_qs = User.objects.order_by("username")
 
 
 class APIRootView(routers.APIRootView):
@@ -80,9 +81,9 @@ class BaseAPISerializer(serializers.ModelSerializer):
 
 class BaseAPIFilterSet(FilterSet):
     created_on = DateTimeFromToRangeFilter()
-    created_by = ModelChoiceFilter(queryset=User.objects.order_by("username"))
+    created_by = ModelChoiceFilter(queryset=user_choice_qs)
     updated_on = DateTimeFromToRangeFilter()
-    updated_by = ModelChoiceFilter(queryset=User.objects.order_by("username"))
+    updated_by = ModelChoiceFilter(queryset=user_choice_qs)
 
 
 class ChoiceFilterSet(BaseAPIFilterSet):
@@ -232,7 +233,7 @@ class UserFilterSet(FilterSet):
     #     field_name="profile__created_on", label="created_on"
     # )
     # created_by = ModelChoiceFilter(
-    #     queryset=User.objects.order_by("username"),
+    #     queryset=user_choice_qs,
     #     field_name="profile__created_by",
     #     label="created_by",
     # )
@@ -240,7 +241,7 @@ class UserFilterSet(FilterSet):
     #     field_name="profile__updated_on", label="updated_on"
     # )
     # updated_by = ModelChoiceFilter(
-    #     queryset=User.objects.order_by("username"),
+    #     queryset=user_choice_qs,
     #     field_name="profile__updated_by",
     #     label="updated_by",
     # )

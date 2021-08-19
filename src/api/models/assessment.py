@@ -46,12 +46,17 @@ class Assessment(BaseModel):
         related_name="collaborator_aps",
     )
     person_responsible_role = models.PositiveSmallIntegerField(
-        choices=PERSON_RESPONSIBLE_ROLES
+        choices=PERSON_RESPONSIBLE_ROLES,
+        null=True,
+        blank=True,
     )
     year = models.PositiveSmallIntegerField()
     management_area_version = models.ForeignKey(
         ManagementAreaVersion,
-        on_delete=models.PROTECT,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        default=None,
         related_name="ma_assessments",
     )
     count_manager = models.PositiveSmallIntegerField(
