@@ -2,7 +2,9 @@ from django.db.models import Q
 from django_filters import DateTimeFromToRangeFilter, ModelChoiceFilter
 from rest_framework import serializers
 from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet, user_choice_qs
-from ..models.assessment import Assessment, AssessmentChange, Collaborator
+from ..models.assessment import Assessment, AssessmentChange, Collaborator, Organization
+from .management import ManagementAreaVersionSerializer
+from django.contrib.auth.models import User
 from ..permissions import (
     ReadOnly,
     AssessmentReadOnlyOrAuthenticatedUserPermission,
@@ -22,12 +24,25 @@ def get_assessment_related_queryset(user, model):
         qry |= Q(**{f"{lookup}collaborators__user": user})
     return qs.filter(qry)
 
+class AssessmentUserSerializer(BaseAPISerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username"]
+
+class AssessmentOrganizationSerializer(BaseAPISerializer):
+    class Meta:
+        model = Organization
+        fields = ["id", "name"]
 
 class AssessmentSerializer(BaseAPISerializer):
     person_responsible = serializers.PrimaryKeyRelatedField(
         queryset=user_choice_qs,
         default=serializers.CurrentUserDefault(),
     )
+
+    person_responsible = AssessmentUserSerializer(many=False)
+    organization = AssessmentOrganizationSerializer(many=False)
+    management_area_version = ManagementAreaVersionSerializer(many=False)
 
     class Meta:
         model = Assessment
@@ -104,8 +119,19 @@ class AssessmentChangeViewSet(BaseAPIViewSet):
     def get_queryset(self):
         return get_assessment_related_queryset(self.request.user, AssessmentChange)
 
+class CollaboratorUserSerializer(BaseAPISerializer):
+    class Meta:
+        model = User
+        fields = ["id", "username"]
+
+class CollaboratorAssessmentSerializer(BaseAPISerializer):
+    class Meta:
+        model = Assessment
+        fields = ["id", "name"]
 
 class CollaboratorSerializer(BaseAPISerializer):
+    user = CollaboratorUserSerializer(many=False)
+    assessment = CollaboratorAssessmentSerializer(many=False)
     class Meta:
         model = Collaborator
         exclude = []

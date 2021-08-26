@@ -4,7 +4,17 @@ from django_filters import (
     RangeFilter,
 )
 from rest_framework_gis.filters import GeometryFilter
-from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet
+from .base import (
+    BaseAPISerializer,
+    BaseAPIFilterSet,
+    BaseAPIViewSet,
+    GovernanceType,
+    ManagementAuthority,
+    ProtectedArea,
+    Region,
+    StakeholderGroup,
+    SupportSource,
+)
 from ..models.management import (
     ManagementArea,
     ManagementAreaVersion,
@@ -15,6 +25,7 @@ from ..permissions import (
     ReadOnlyOrAuthenticatedCreateOrOwner,
 )
 
+from rest_framework import serializers
 
 class ManagementAreaSerializer(BaseAPISerializer):
     class Meta:
@@ -37,12 +48,46 @@ class ManagementAreaViewSet(BaseAPIViewSet):
         ReadOnlyOrAuthenticatedCreate,
     ]
 
+class ManagementAreaVersionStakeholderGroupSerializer(BaseAPISerializer):
+    class Meta:
+        model = StakeholderGroup
+        fields = ["id", "name"]
+
+class ManagementAreaVersionSupportSourceSerializer(BaseAPISerializer):
+    class Meta:
+        model = SupportSource
+        fields = ["id", "name"]
+
+class ManagementAreaVersionProtectedAreaSerializer(BaseAPISerializer):
+    class Meta:
+        model = ProtectedArea
+        fields = ["id", "name"]
+
+class ManagementAreaVersionGovernanceTypeSerializer(BaseAPISerializer):
+    class Meta:
+        model = GovernanceType
+        fields = ["id", "name"]
+
+class ManagementAreaVersionRegionSerializer(BaseAPISerializer):
+    class Meta:
+        model = Region
+        fields = ["id", "name"]
+
+class ManagementAreaVersionManagementAuthoritySerializer(BaseAPISerializer):
+    class Meta:
+        model = ManagementAuthority
+        fields = ["id", "name"]
 
 class ManagementAreaVersionSerializer(CountryFieldMixin, BaseAPISerializer):
+    stakeholder_groups = ManagementAreaVersionStakeholderGroupSerializer(many=True)
+    support_sources = ManagementAreaVersionSupportSourceSerializer(many=True)
+    protected_area = ManagementAreaVersionProtectedAreaSerializer(many=False)
+    governance_type = ManagementAreaVersionGovernanceTypeSerializer(many=False)
+    regions = ManagementAreaVersionRegionSerializer(many=True)
+    management_authority = ManagementAreaVersionManagementAuthoritySerializer(many=False)
     class Meta:
         model = ManagementAreaVersion
         exclude = []
-
 
 class ManagementAreaVersionFilterSet(BaseAPIFilterSet):
     date_established = DateFromToRangeFilter()

@@ -10,6 +10,7 @@ from .base import (
     StakeholderGroup,
     SupportSource,
 )
+import datetime
 
 
 class ManagementArea(BaseModel):
@@ -45,12 +46,12 @@ class ManagementAreaVersion(BaseModel):
     )
 
     management_area = models.ForeignKey(ManagementArea, on_delete=models.PROTECT)
-    name = models.CharField(max_length=255)
+    name = models.CharField(blank=True, null=True, max_length=255)
     protected_area = models.ForeignKey(
         ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True
     )
     date_established = models.DateField(null=True, blank=True)
-    version_date = models.DateField()
+    version_date = models.DateField(default=datetime.date.today)
     management_authority = models.ForeignKey(
         ManagementAuthority, on_delete=models.SET_NULL, blank=True, null=True
     )
