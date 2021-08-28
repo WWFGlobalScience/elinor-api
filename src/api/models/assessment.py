@@ -1,8 +1,9 @@
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
 from .base import LIKERT_CHOICES, BaseModel, Organization
-from .management import ManagementAreaVersion
+from .management import ManagementArea
 
 
 class Assessment(BaseModel):
@@ -51,13 +52,12 @@ class Assessment(BaseModel):
         blank=True,
     )
     year = models.PositiveSmallIntegerField()
-    management_area_version = models.ForeignKey(
-        ManagementAreaVersion,
-        on_delete=models.SET_NULL,
+    management_area = models.OneToOneField(
+        ManagementArea,
+        on_delete=models.PROTECT,
         null=True,
         blank=True,
         default=None,
-        related_name="ma_assessments",
     )
     count_manager = models.PositiveSmallIntegerField(
         default=0, verbose_name=_("MA manager count")
@@ -403,8 +403,25 @@ class Assessment(BaseModel):
     )
     climatechange_monitored_text = models.TextField(blank=True)
 
+    # Disallow publishing if any fields are null. Does not check non-nullable fields with default values.
+    def clean(self):
+        if self.status == self.PUBLISHED:
+            nullfields = []
+            for field in self._meta.get_fields():
+                value = getattr(self, field.name)
+                if value is None:
+                    nullfields.append(field.name)
+            if nullfields:
+                raise ValidationError(
+                    {f: _("May not be published unanswered") for f in nullfields}
+                )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
     class Meta:
-        unique_together = ("management_area_version", "year")
+        unique_together = ("management_area", "year")
         ordering = ["name", "year"]
 
     @property
@@ -416,7 +433,7 @@ class Assessment(BaseModel):
 
 
 class Collaborator(BaseModel):
-    assessment_lookup = "assessment__"
+    assessment_lookup = "assessment"
 
     ADMIN = 70
     CONTRIBUTOR = 40
@@ -453,7 +470,7 @@ class Collaborator(BaseModel):
 
 
 class AssessmentChange(BaseModel):
-    assessment_lookup = "assessment__"
+    assessment_lookup = "assessment"
 
     SUBMIT = 1
     UNSUBMIT = 2

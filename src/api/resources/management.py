@@ -3,67 +3,94 @@ from django_filters import (
     DateFromToRangeFilter,
     RangeFilter,
 )
+from rest_framework import serializers
 from rest_framework_gis.filters import GeometryFilter
-from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet
-from ..models.management import (
+from .base import (
+    BaseAPISerializer,
+    BaseAPIFilterSet,
+    BaseAPIViewSet,
+    ReadOnlyChoiceSerializer,
+)
+from ..models import (
+    GovernanceType,
     ManagementArea,
-    ManagementAreaVersion,
     ManagementAreaZone,
+    ManagementAuthority,
+    ProtectedArea,
+    Region,
+    StakeholderGroup,
+    SupportSource,
 )
-from ..permissions import (
-    ReadOnlyOrAuthenticatedCreate,
-    ReadOnlyOrAuthenticatedCreateOrOwner,
-)
+from ..permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
-class ManagementAreaSerializer(BaseAPISerializer):
+class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
+    stakeholder_group_ids = serializers.PrimaryKeyRelatedField(
+        queryset=StakeholderGroup.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    stakeholder_groups = ReadOnlyChoiceSerializer(many=True, read_only=True)
+    support_source_ids = serializers.PrimaryKeyRelatedField(
+        queryset=SupportSource.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    support_sources = ReadOnlyChoiceSerializer(many=True, read_only=True)
+    protected_area_id = serializers.PrimaryKeyRelatedField(
+        queryset=ProtectedArea.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+    protected_area = ReadOnlyChoiceSerializer(read_only=True)
+    governance_type_id = serializers.PrimaryKeyRelatedField(
+        queryset=GovernanceType.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+    governance_type = ReadOnlyChoiceSerializer(read_only=True)
+    region_ids = serializers.PrimaryKeyRelatedField(
+        queryset=StakeholderGroup.objects.all(),
+        many=True,
+        required=False,
+        write_only=True,
+    )
+    regions = ReadOnlyChoiceSerializer(many=True, read_only=True)
+    management_authority_id = serializers.PrimaryKeyRelatedField(
+        queryset=ManagementAuthority.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+    management_authority = ReadOnlyChoiceSerializer(read_only=True)
+
     class Meta:
         model = ManagementArea
         exclude = []
 
 
 class ManagementAreaFilterSet(BaseAPIFilterSet):
-    class Meta:
-        model = ManagementArea
-        exclude = []
-
-
-class ManagementAreaViewSet(BaseAPIViewSet):
-    queryset = ManagementArea.objects.all()
-    ordering = ["pk"]
-    serializer_class = ManagementAreaSerializer
-    filter_class = ManagementAreaFilterSet
-    permission_classes = [
-        ReadOnlyOrAuthenticatedCreate,
-    ]
-
-
-class ManagementAreaVersionSerializer(CountryFieldMixin, BaseAPISerializer):
-    class Meta:
-        model = ManagementAreaVersion
-        exclude = []
-
-
-class ManagementAreaVersionFilterSet(BaseAPIFilterSet):
     date_established = DateFromToRangeFilter()
     version_date = DateFromToRangeFilter()
     reported_size = RangeFilter()
     intersects_polygon = GeometryFilter(field_name="polygon", lookup_expr="intersects")
 
     class Meta:
-        model = ManagementAreaVersion
+        model = ManagementArea
         exclude = ["geospatial_sources", "import_file", "map_image", "polygon", "point"]
 
 
-class ManagementAreaVersionViewSet(BaseAPIViewSet):
-    queryset = ManagementAreaVersion.objects.all()
+class ManagementAreaViewSet(BaseAPIViewSet):
+    queryset = ManagementArea.objects.all()
     ordering = ["name", "version_date"]
-    serializer_class = ManagementAreaVersionSerializer
-    filter_class = ManagementAreaVersionFilterSet
+    serializer_class = ManagementAreaSerializer
+    filter_class = ManagementAreaFilterSet
     search_fields = ["name", "protected_area__name", "management_authority__name"]
-    permission_classes = [
-        ReadOnlyOrAuthenticatedCreateOrOwner,
-    ]
+    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
 
 class ManagementAreaZoneSerializer(BaseAPISerializer):
@@ -80,10 +107,8 @@ class ManagementAreaZoneFilterSet(BaseAPIFilterSet):
 
 class ManagementAreaZoneViewSet(BaseAPIViewSet):
     queryset = ManagementAreaZone.objects.all()
-    ordering = ["name", "management_area_version"]
+    ordering = ["name", "management_area__name"]
     serializer_class = ManagementAreaZoneSerializer
     filter_class = ManagementAreaZoneFilterSet
-    search_fields = ["name", "management_area_version__name"]
-    permission_classes = [
-        ReadOnlyOrAuthenticatedCreateOrOwner,
-    ]
+    search_fields = ["name", "management_area__name"]
+    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]

@@ -11,7 +11,6 @@ from .resources.base import (
 )
 from .resources.management import (
     ManagementAreaViewSet,
-    ManagementAreaVersionViewSet,
     ManagementAreaZoneViewSet,
 )
 from .resources.assessment import (
@@ -28,9 +27,6 @@ router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange
 router.register(r"collaborators", CollaboratorViewSet, "collaborator")
 router.register(r"governancetypes", GovernanceTypeViewSet, "governancetype")
 router.register(r"managementareas", ManagementAreaViewSet, "managementarea")
-router.register(
-    r"managementareaversions", ManagementAreaVersionViewSet, "managementareaversion"
-)
 router.register(r"managementareazones", ManagementAreaZoneViewSet, "managementareazone")
 router.register(
     r"managementauthorities", ManagementAuthorityViewSet, "managementauthority"

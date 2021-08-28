@@ -1,3 +1,4 @@
+import datetime
 from django.contrib.gis.db import models
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
@@ -13,13 +14,8 @@ from .base import (
 
 
 class ManagementArea(BaseModel):
-    parent = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True)
+    assessment_lookup = "assessment"
 
-    def __str__(self):
-        return str(self.pk)
-
-
-class ManagementAreaVersion(BaseModel):
     LOCAL = "local"
     NATIONAL = "national"
     INTERNATIONAL = "international"
@@ -44,13 +40,13 @@ class ManagementAreaVersion(BaseModel):
         ),
     )
 
-    management_area = models.ForeignKey(ManagementArea, on_delete=models.PROTECT)
+    parent = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True)
     name = models.CharField(max_length=255)
     protected_area = models.ForeignKey(
         ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True
     )
     date_established = models.DateField(null=True, blank=True)
-    version_date = models.DateField()
+    version_date = models.DateField(default=datetime.date.today)
     management_authority = models.ForeignKey(
         ManagementAuthority, on_delete=models.SET_NULL, blank=True, null=True
     )
@@ -79,7 +75,7 @@ class ManagementAreaVersion(BaseModel):
     geospatial_sources = models.TextField(blank=True)
 
     class Meta:
-        verbose_name = _("management area version")
+        verbose_name = _("management area")
         ordering = ["name", "date_established"]
 
     def __str__(self):
@@ -107,8 +103,8 @@ class ManagementAreaZone(BaseModel):
     )
 
     name = models.CharField(max_length=255)
-    management_area_version = models.ForeignKey(
-        ManagementAreaVersion, on_delete=models.CASCADE, related_name="ma_zones"
+    management_area = models.ForeignKey(
+        ManagementArea, on_delete=models.CASCADE, related_name="ma_zones"
     )
     access_level = models.PositiveSmallIntegerField(
         choices=ACCESS_CHOICES, default=OPEN_ACCESS
