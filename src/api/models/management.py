@@ -11,9 +11,11 @@ from .base import (
     StakeholderGroup,
     SupportSource,
 )
+from ..utils.management import get_multipolygon_from_import_file
 
 
 class ManagementArea(BaseModel):
+    _polygon_from_file = None
     assessment_lookup = "assessment"
 
     LOCAL = "local"
@@ -73,6 +75,17 @@ class ManagementArea(BaseModel):
     import_file = models.FileField(upload_to="upload", blank=True, null=True)
     map_image = models.ImageField(upload_to="upload", blank=True, null=True)
     geospatial_sources = models.TextField(blank=True)
+
+    def clean(self):
+        if self.import_file._committed is False:
+            self._polygon_from_file = get_multipolygon_from_import_file(self.import_file.file)
+            print(self._polygon_from_file.__dict__)
+        # raise ValidationError({"import_file": _("Invalid shapefile")})
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        # if _polygon_from_shapefile, set self.polygon to it
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("management area")
