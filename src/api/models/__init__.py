@@ -10,7 +10,6 @@ from .base import (
 )
 from .management import (
     ManagementArea,
-    ManagementAreaVersion,
     ManagementAreaZone,
 )
 from .assessment import (

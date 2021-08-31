@@ -2,7 +2,7 @@ from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from .models import Assessment, ManagementAreaVersion, Profile
+from .models import Assessment, ManagementArea, Profile
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -39,7 +39,7 @@ def move_ma_files(sender, instance, created, **kwargs):
     move_model_file(instance, "management_plan_file")
 
 
-@receiver(post_save, sender=ManagementAreaVersion)
+@receiver(post_save, sender=ManagementArea)
 def move_ma_files(sender, instance, created, **kwargs):
     move_model_file(instance, "import_file")
     move_model_file(instance, "map_image")
@@ -50,7 +50,7 @@ def delete_ap_files(sender, instance, **kwargs):
     delete_model_file(instance, "management_plan_file")
 
 
-@receiver(post_delete, sender=ManagementAreaVersion)
+@receiver(post_delete, sender=ManagementArea)
 def delete_ma_files(sender, instance, **kwargs):
     delete_model_file(instance, "import_file")
     delete_model_file(instance, "map_image")

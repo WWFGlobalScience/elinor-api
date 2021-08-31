@@ -1,3 +1,4 @@
+from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import permissions, serializers
 from rest_framework.exceptions import PermissionDenied
 from .models.assessment import Assessment, Collaborator
@@ -38,22 +39,6 @@ class ReadOnlyOrAuthenticatedCreate(permissions.BasePermission):
         return user.is_authenticated and (request.method == "POST" or user.is_superuser)
 
 
-class ReadOnlyOrAuthenticatedCreateOrOwner(permissions.BasePermission):
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        user = request.user
-        return user.is_authenticated
-
-    # has_permission checks (handling SAFE_METHODS + POST) have already passed
-    def has_object_permission(self, request, view, obj):
-        user = request.user
-        if user.is_authenticated:
-            return user == obj.created_by or user.is_superuser
-        return False
-
-
 class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission):
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
@@ -67,11 +52,22 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
         if user.is_authenticated:
             if user.is_superuser:
                 return True
-            collaborator = get_collaborator(obj, user)
-            if collaborator.is_admin:
-                return not obj.is_published
-            elif collaborator.is_collector:
-                return not obj.is_published and request.method in ("PUT", "PATCH")
+
+            if hasattr(obj, "assessment_lookup"):
+                assessment = obj
+                if obj.assessment_lookup != "":
+                    try:
+                        assessment = getattr(obj, obj.assessment_lookup)
+                    except ObjectDoesNotExist:
+                        return False
+                collaborator = get_collaborator(assessment, user)
+                if collaborator.is_admin:
+                    return not assessment.is_published
+                elif collaborator.is_collector:
+                    return not assessment.is_published and request.method in (
+                        "PUT",
+                        "PATCH",
+                    )
 
         return False
 

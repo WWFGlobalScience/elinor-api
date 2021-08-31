@@ -1,8 +1,22 @@
 from django.db.models import Q
 from django_filters import DateTimeFromToRangeFilter, ModelChoiceFilter
 from rest_framework import serializers
-from .base import BaseAPISerializer, BaseAPIFilterSet, BaseAPIViewSet, user_choice_qs
-from ..models.assessment import Assessment, AssessmentChange, Collaborator
+from .base import (
+    BaseAPISerializer,
+    BaseAPIFilterSet,
+    BaseAPIViewSet,
+    user_choice_qs,
+    ReadOnlyChoiceSerializer,
+    UserSerializer,
+)
+from .management import ManagementAreaSerializer
+from ..models import (
+    Assessment,
+    AssessmentChange,
+    Collaborator,
+    ManagementArea,
+    Organization,
+)
 from ..permissions import (
     ReadOnly,
     AssessmentReadOnlyOrAuthenticatedUserPermission,
@@ -13,6 +27,8 @@ from ..utils.assessment import log_assessment_change
 
 def get_assessment_related_queryset(user, model):
     lookup = model.assessment_lookup
+    if lookup != "":
+        lookup = f"{lookup}__"
     qs = model.objects.all()
     qry = Q(**{f"{lookup}status__lte": Assessment.PUBLISHED}) & Q(
         **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
@@ -24,10 +40,26 @@ def get_assessment_related_queryset(user, model):
 
 
 class AssessmentSerializer(BaseAPISerializer):
-    person_responsible = serializers.PrimaryKeyRelatedField(
+    person_responsible_id = serializers.PrimaryKeyRelatedField(
         queryset=user_choice_qs,
         default=serializers.CurrentUserDefault(),
+        write_only=True,
     )
+    person_responsible = UserSerializer(read_only=True)
+    organization_id = serializers.PrimaryKeyRelatedField(
+        queryset=Organization.objects.all(),
+        allow_null=True,
+        required=False,
+        write_only=True,
+    )
+    organization = ReadOnlyChoiceSerializer(read_only=True)
+    # management_area_id = serializers.PrimaryKeyRelatedField(
+    #     queryset=ManagementArea.objects.all(),
+    #     allow_null=True,
+    #     required=False,
+    #     write_only=True,
+    # )
+    # management_area = ManagementAreaSerializer(read_only=True)
 
     class Meta:
         model = Assessment
@@ -46,7 +78,7 @@ class AssessmentViewSet(BaseAPIViewSet):
     ordering = ["name", "year"]
     serializer_class = AssessmentSerializer
     filter_class = AssessmentFilterSet
-    search_fields = ["name", "management_area_version__name"]
+    search_fields = ["name", "management_area__name"]
     permission_classes = [
         AssessmentReadOnlyOrAuthenticatedUserPermission,
     ]
@@ -106,6 +138,17 @@ class AssessmentChangeViewSet(BaseAPIViewSet):
 
 
 class CollaboratorSerializer(BaseAPISerializer):
+    user_id = serializers.PrimaryKeyRelatedField(
+        queryset=user_choice_qs,
+        default=serializers.CurrentUserDefault(),
+        write_only=True,
+    )
+    user = UserSerializer(read_only=True)
+    assessment_id = serializers.PrimaryKeyRelatedField(
+        queryset=Assessment.objects.all(), write_only=True
+    )
+    assessment = ReadOnlyChoiceSerializer(read_only=True)
+
     class Meta:
         model = Collaborator
         exclude = []

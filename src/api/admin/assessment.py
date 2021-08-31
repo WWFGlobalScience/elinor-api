@@ -27,14 +27,14 @@ class AssessmentAdmin(BaseAdmin):
         "status",
         "data_policy",
         "year",
-        "management_area_version",
+        "management_area",
     ] + BaseAdmin.list_display
     search_fields = [
         "name",
         "management_area__name",
         "organization",
     ]
-    list_filter = ["status", "data_policy", "year", "management_area_version"]
+    list_filter = ["status", "data_policy", "year", "management_area"]
     inlines = [AssessmentChangeInline]
 
     def save_model(self, request, obj, form, change):
