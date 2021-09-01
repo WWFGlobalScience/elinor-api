@@ -79,7 +79,7 @@ class ManagementArea(BaseModel):
     def clean(self):
         if self.import_file._committed is False:
             self._polygon_from_file = get_multipolygon_from_import_file(self.import_file.file)
-            print(self._polygon_from_file.__dict__)
+            print(self._polygon_from_file)
         # raise ValidationError({"import_file": _("Invalid shapefile")})
 
     def save(self, *args, **kwargs):
