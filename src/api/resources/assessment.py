@@ -6,15 +6,14 @@ from .base import (
     BaseAPIFilterSet,
     BaseAPIViewSet,
     user_choice_qs,
+    PrimaryKeyExpandedField,
     ReadOnlyChoiceSerializer,
     UserSerializer,
 )
-from .management import ManagementAreaSerializer
 from ..models import (
     Assessment,
     AssessmentChange,
     Collaborator,
-    ManagementArea,
     Organization,
 )
 from ..permissions import (
@@ -40,26 +39,17 @@ def get_assessment_related_queryset(user, model):
 
 
 class AssessmentSerializer(BaseAPISerializer):
-    person_responsible_id = serializers.PrimaryKeyRelatedField(
+    person_responsible = PrimaryKeyExpandedField(
         queryset=user_choice_qs,
         default=serializers.CurrentUserDefault(),
-        write_only=True,
+        serializer=UserSerializer,
     )
-    person_responsible = UserSerializer(read_only=True)
-    organization_id = serializers.PrimaryKeyRelatedField(
+    organization = PrimaryKeyExpandedField(
         queryset=Organization.objects.all(),
         allow_null=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    organization = ReadOnlyChoiceSerializer(read_only=True)
-    # management_area_id = serializers.PrimaryKeyRelatedField(
-    #     queryset=ManagementArea.objects.all(),
-    #     allow_null=True,
-    #     required=False,
-    #     write_only=True,
-    # )
-    # management_area = ManagementAreaSerializer(read_only=True)
 
     class Meta:
         model = Assessment
@@ -138,16 +128,15 @@ class AssessmentChangeViewSet(BaseAPIViewSet):
 
 
 class CollaboratorSerializer(BaseAPISerializer):
-    user_id = serializers.PrimaryKeyRelatedField(
+    user = PrimaryKeyExpandedField(
         queryset=user_choice_qs,
         default=serializers.CurrentUserDefault(),
-        write_only=True,
+        serializer=UserSerializer,
     )
-    user = UserSerializer(read_only=True)
-    assessment_id = serializers.PrimaryKeyRelatedField(
-        queryset=Assessment.objects.all(), write_only=True
+    assessment = PrimaryKeyExpandedField(
+        queryset=Assessment.objects.all(),
+        serializer=ReadOnlyChoiceSerializer,
     )
-    assessment = ReadOnlyChoiceSerializer(read_only=True)
 
     class Meta:
         model = Collaborator
