@@ -26,7 +26,7 @@ ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 # TODO: replace with frontend login url?
 LOGIN_URL = "http://localhost:8081/rest-auth/login"
-if ENVIRONMENT not in ("prod",):
+if ENVIRONMENT not in ("prod", "dev"):
     DEBUG = True
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
