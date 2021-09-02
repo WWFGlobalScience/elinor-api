@@ -9,6 +9,7 @@ from .base import (
     BaseAPISerializer,
     BaseAPIFilterSet,
     BaseAPIViewSet,
+    PrimaryKeyExpandedField,
     ReadOnlyChoiceSerializer,
 )
 from ..models import (
@@ -25,48 +26,42 @@ from ..permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
 class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
-    stakeholder_group_ids = serializers.PrimaryKeyRelatedField(
+    stakeholder_groups = PrimaryKeyExpandedField(
         queryset=StakeholderGroup.objects.all(),
         many=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    stakeholder_groups = ReadOnlyChoiceSerializer(many=True, read_only=True)
-    support_source_ids = serializers.PrimaryKeyRelatedField(
+    support_sources = PrimaryKeyExpandedField(
         queryset=SupportSource.objects.all(),
         many=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    support_sources = ReadOnlyChoiceSerializer(many=True, read_only=True)
-    protected_area_id = serializers.PrimaryKeyRelatedField(
+    protected_area = PrimaryKeyExpandedField(
         queryset=ProtectedArea.objects.all(),
         allow_null=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    protected_area = ReadOnlyChoiceSerializer(read_only=True)
-    governance_type_id = serializers.PrimaryKeyRelatedField(
+    governance_type = PrimaryKeyExpandedField(
         queryset=GovernanceType.objects.all(),
         allow_null=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    governance_type = ReadOnlyChoiceSerializer(read_only=True)
-    region_ids = serializers.PrimaryKeyRelatedField(
-        queryset=StakeholderGroup.objects.all(),
+    regions = PrimaryKeyExpandedField(
+        queryset=Region.objects.all(),
         many=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    regions = ReadOnlyChoiceSerializer(many=True, read_only=True)
-    management_authority_id = serializers.PrimaryKeyRelatedField(
+    management_authority = PrimaryKeyExpandedField(
         queryset=ManagementAuthority.objects.all(),
         allow_null=True,
         required=False,
-        write_only=True,
+        serializer=ReadOnlyChoiceSerializer,
     )
-    management_authority = ReadOnlyChoiceSerializer(read_only=True)
 
     class Meta:
         model = ManagementArea
