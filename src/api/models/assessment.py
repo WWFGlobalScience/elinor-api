@@ -9,6 +9,8 @@ from .management import ManagementArea
 class Assessment(BaseModel):
     assessment_lookup = ""
 
+    ALLOWED_PUBLISHED_NULLFIELDS = ("created_by", "updated_by")
+
     OPEN = 90
     TEST = 80
     PUBLISHED = 10
@@ -409,7 +411,7 @@ class Assessment(BaseModel):
             nullfields = []
             for field in self._meta.get_fields():
                 value = getattr(self, field.name)
-                if value is None:
+                if value is None and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS:
                     nullfields.append(field.name)
             if nullfields:
                 raise ValidationError(
