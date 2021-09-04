@@ -1,5 +1,6 @@
 import datetime
 from django.contrib.gis.db import models
+from django.contrib.postgres.fields import ArrayField
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 from .base import (
@@ -40,7 +41,21 @@ class ManagementArea(BaseModel):
         ),
     )
 
-    parent = models.ForeignKey("self", on_delete=models.SET_NULL, blank=True, null=True)
+    parent = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="versions",
+    )
+    # just a FK; for actual spatial query use polygon intersection
+    containedby = models.ForeignKey(
+        "self",
+        on_delete=models.SET_NULL,
+        blank=True,
+        null=True,
+        related_name="mas_inside",
+    )
     name = models.CharField(max_length=255)
     protected_area = models.ForeignKey(
         ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True
@@ -50,8 +65,8 @@ class ManagementArea(BaseModel):
     management_authority = models.ForeignKey(
         ManagementAuthority, on_delete=models.SET_NULL, blank=True, null=True
     )
-    recognition_level = models.CharField(
-        max_length=100, choices=RECOGNITION_TYPES, blank=True, null=True
+    recognition_level = ArrayField(
+        models.TextField(choices=RECOGNITION_TYPES), blank=True
     )
     stakeholder_groups = models.ManyToManyField(StakeholderGroup, blank=True)
     support_sources = models.ManyToManyField(SupportSource, blank=True)
