@@ -4,6 +4,18 @@ from rest_framework.exceptions import PermissionDenied
 from .models.assessment import Assessment, Collaborator
 
 
+def get_assessment_or_none(obj):
+    assessment = None
+    if hasattr(obj, "assessment_lookup"):
+        assessment = obj
+        if obj.assessment_lookup != "":
+            try:
+                assessment = getattr(obj, obj.assessment_lookup)
+            except ObjectDoesNotExist:
+                return None
+    return assessment
+
+
 def get_collaborator(assessment, user):
     try:
         return Collaborator.objects.get(assessment=assessment, user=user)
@@ -49,25 +61,19 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
 
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.is_authenticated:
-            if user.is_superuser:
-                return True
+        if request.method in permissions.SAFE_METHODS or user.is_superuser:
+            return True
 
-            if hasattr(obj, "assessment_lookup"):
-                assessment = obj
-                if obj.assessment_lookup != "":
-                    try:
-                        assessment = getattr(obj, obj.assessment_lookup)
-                    except ObjectDoesNotExist:
-                        return False
-                collaborator = get_collaborator(assessment, user)
-                if collaborator.is_admin:
-                    return not assessment.is_published
-                elif collaborator.is_collector:
-                    return not assessment.is_published and request.method in (
-                        "PUT",
-                        "PATCH",
-                    )
+        assessment = get_assessment_or_none(obj)
+        if assessment:
+            collaborator = get_collaborator(assessment, user)
+            if collaborator.is_admin:
+                return not assessment.is_published
+            elif collaborator.is_collector:
+                return not assessment.is_published and request.method in (
+                    "PUT",
+                    "PATCH",
+                )
 
         return False
 
