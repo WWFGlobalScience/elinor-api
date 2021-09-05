@@ -17,7 +17,7 @@ from django.contrib import admin
 from django.urls import include, path
 from api.urls import api_urls
 from dj_rest_auth.views import PasswordResetConfirmView
-from api.resources.base import NewEmailConfirmation
+from api.resources.authuser import NewEmailConfirmation
 from dj_rest_auth.registration.views import VerifyEmailView, ConfirmEmailView
 
 
@@ -28,10 +28,6 @@ urlpatterns = [
         "api-sessionauth/", include("rest_framework.urls", namespace="rest_framework")
     ),
     path("rest-auth/", include("dj_rest_auth.urls")),
-    path(
-        "rest-auth/registration/account-confirm-email/<str:key>/",
-        ConfirmEmailView.as_view(),
-    ),
     path(
         "rest-auth/registration/resend-verification-email/",
         NewEmailConfirmation.as_view(),
