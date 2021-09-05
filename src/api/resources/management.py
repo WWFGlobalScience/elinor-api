@@ -73,7 +73,7 @@ class ManagementAreaFilterSet(BaseAPIFilterSet):
     version_date = DateFromToRangeFilter()
     reported_size = RangeFilter()
     intersects_polygon = GeometryFilter(field_name="polygon", lookup_expr="intersects")
-    recognition_level = CharFilter(lookup_expr='icontains')
+    recognition_level = CharFilter(lookup_expr="icontains")
 
     class Meta:
         model = ManagementArea

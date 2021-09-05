@@ -1,6 +1,4 @@
 from collections import OrderedDict
-from allauth.account.admin import EmailAddress
-from allauth.account.utils import send_email_confirmation
 from django.contrib.auth import get_user_model
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
@@ -12,15 +10,9 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from rest_framework import permissions, routers, serializers, status, viewsets
-from rest_framework.exceptions import APIException
+from rest_framework import permissions, routers, serializers, viewsets
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.generics import get_object_or_404
 from rest_framework.pagination import PageNumberPagination
-from rest_framework.permissions import AllowAny
-from rest_framework.response import Response
-from rest_framework.views import APIView
-from dj_rest_auth.registration.serializers import RegisterSerializer
 from ..models import (
     GovernanceType,
     ManagementAuthority,
@@ -187,69 +179,6 @@ class UserSerializer(BaseAPISerializer):
             "email",
         ]
         read_only_fields = ["date_joined", "is_superuser"]
-
-
-# for dj-rest-auth
-class UserRegistrationSerializer(RegisterSerializer):
-    first_name = serializers.CharField(max_length=150)
-    last_name = serializers.CharField(max_length=150)
-    affiliation = serializers.PrimaryKeyRelatedField(
-        allow_null=True,
-        queryset=Organization.objects.all(),
-    )
-    accept_tor = serializers.BooleanField(
-        label="Accept ToR",
-    )
-
-    def save(self, request):
-        first_name = self.validated_data.get("first_name")
-        last_name = self.validated_data.get("last_name")
-        affiliation = self.validated_data.get("affiliation")
-        accept_tor = self.validated_data.get("accept_tor", False)
-        if not accept_tor:
-            missing_tor_message = "The Terms of Reference must be accepted in order to register a new account"
-            # This does the right thing but does cause a 500 when wrapped in the DRF html view
-            raise serializers.ValidationError(missing_tor_message)
-        user = super().save(request)
-        user.first_name = first_name
-        user.last_name = last_name
-        user.save()
-        profile = user.profile
-        profile.affiliation = affiliation
-        profile.accept_tor = accept_tor
-        profile.created_by = user
-        profile.updated_by = user
-        profile.save()
-
-        return user
-
-
-class NewEmailConfirmation(APIView):
-    permission_classes = [AllowAny]
-
-    def post(self, request):
-        user = get_object_or_404(User, email=request.data["email"])
-        emailAddress = EmailAddress.objects.filter(user=user, verified=True).exists()
-
-        if emailAddress:
-            return Response(
-                {"message": "This email is already verified"},
-                status=status.HTTP_400_BAD_REQUEST,
-            )
-        else:
-            try:
-                send_email_confirmation(request, user=user)
-                return Response(
-                    {"message": "Email confirmation sent"},
-                    status=status.HTTP_201_CREATED,
-                )
-            except APIException:
-                return Response(
-                    {
-                        "message": "This email does not exist, please create a new account"
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
 
 
 class UserFilterSet(FilterSet):
