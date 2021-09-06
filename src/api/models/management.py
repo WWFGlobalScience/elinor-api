@@ -93,13 +93,12 @@ class ManagementArea(BaseModel):
 
     def clean(self):
         if self.import_file._committed is False:
-            self._polygon_from_file = get_multipolygon_from_import_file(self.import_file.file)
-            print(self._polygon_from_file)
-        # raise ValidationError({"import_file": _("Invalid shapefile")})
+            self._polygon_from_file = get_multipolygon_from_import_file(self.import_file)
 
     def save(self, *args, **kwargs):
         self.full_clean()
-        # if _polygon_from_shapefile, set self.polygon to it
+        if self._polygon_from_file:
+            self.polygon = self._polygon_from_file.geos
         super().save(*args, **kwargs)
 
     class Meta:

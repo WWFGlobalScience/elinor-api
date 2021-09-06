@@ -1,6 +1,8 @@
 import zipfile
 from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.gdal.error import GDALException
+from django.contrib.gis.gdal.geometries import MultiPolygon, OGRGeomType
+from django.contrib.gis.geos import LinearRing, Polygon as GEOSPolygon
 from django.core.exceptions import ValidationError
 from django.template.defaultfilters import filesizeformat
 from django.utils.translation import ugettext_lazy as _
@@ -13,6 +15,9 @@ ACCEPTED_FILETYPES = ("application/zip",)
 ACCEPTED_EXTENSIONS = (".shp",)
 ACCEPTED_GEOGCS = ("GEOGCS",)
 ACCEPTED_EPSG = ("4326",)
+POLYGON = "Polygon"
+MULTIPOLYGON = "MultiPolygon"
+ACCEPTED_GEOMETRIES = (POLYGON, MULTIPOLYGON)
 
 
 def get_extension_from_files(files):
@@ -24,11 +29,12 @@ def get_extension_from_files(files):
     return None
 
 
-def get_zip_content(import_file, temppath):
-    field = import_file.field_name
+def get_zip_content(import_file_field, temppath):
+    field = import_file_field.field.name
+    import_file = import_file_field.file
 
     try:
-        zf = zipfile.ZipFile(import_file.file)
+        zf = zipfile.ZipFile(import_file)
         zf.extractall(temppath)
         dirs = [f for f in temppath.iterdir() if temppath.joinpath(f).is_dir()]
         files = [f for f in temppath.iterdir() if temppath.joinpath(f).is_file()]
@@ -49,39 +55,98 @@ def get_zip_content(import_file, temppath):
         raise ValidationError({field: _("File is not a zip file")})
 
 
-def get_multipolygon_from_shp(import_file, shapefiledir):
-    field = import_file.field_name
-    polygon = None
+def clean_multipolygon(polygon):
+    multi = None
+    # print("input geom (OGR)")
+    # print(polygon)
+    # print(polygon.geom_type)
+    # print(polygon.geom_count)
+    # print(polygon.srid)
+    if polygon.geom_type in ACCEPTED_GEOMETRIES:
+        polygon.close_rings()
+        # print(polygon.geos.valid_reason)
+        multi = polygon
+        # Convert polygon of rings to multipolygon of polygons, to ensure dissolve
+        if polygon.geom_type == POLYGON:
+            multi = MultiPolygon(OGRGeomType(MULTIPOLYGON), srs=polygon.srid)
+            for part in polygon:
+                points = [(x, y) for x, y in zip(part.x, part.y)]
+                ring = LinearRing(points)
+                poly = GEOSPolygon(ring)
+                multi.add(poly.ogr)
+
+        if multi.empty:
+            multi = None
+
+    return multi
+
+
+def get_multipolygon_from_geometries(geometries):
+    """
+    :param geometries: list of geometries of type Polygon or Multipolygon from django.contrib.gis.gdal.geometries
+    :return: django.contrib.gis.gdal.geometries.Multipolygon or None
+    """
+
+    multipolygon = MultiPolygon(OGRGeomType(MULTIPOLYGON), srs=geometries[0].srid)
+    for geometry in geometries:
+        multi = clean_multipolygon(geometry)
+        if multi:
+            multipolygon.add(multi)
+    # print("converted input geoms")
+    # print(multipolygon)
+    # print(multipolygon.geom_type)
+    # print(multipolygon.srid)
+
+    if multipolygon.empty:
+        return None
+
+    polygon = multipolygon.geos.unary_union.ogr
+    returnmultipolygon = MultiPolygon(OGRGeomType(MULTIPOLYGON), srs=multipolygon.srid)
+    returnmultipolygon.add(polygon)
+    # print("output geom (OGR)")
+    # print(returnmultipolygon)
+    # print(returnmultipolygon.geom_type)
+    # print(returnmultipolygon.srid)
+
+    return returnmultipolygon
+
+
+def get_multipolygon_from_shp(field, shapefiledir):
     try:
         ds = DataSource(shapefiledir)
         shp = ds[0]
-        # print(type(shp))
-        # print(dir(shp))
-        # print(shp.__dict__)
     except (IndexError, GDALException) as e:
-        raise ValidationError({field: f"Error parsing shapefile. Are all sidecar files included? Exception: {e}"})
+        raise ValidationError(
+            {
+                field: f"Error parsing shapefile. Are all sidecar files included? Exception: {e}"
+            }
+        )
 
-    if shp.srs["GEOGCS"] not in ACCEPTED_GEOGCS and shp.srs["AUTHORITY", 1] not in ACCEPTED_EPSG:
+    if (
+        shp.srs["GEOGCS"] not in ACCEPTED_GEOGCS
+        and shp.srs["AUTHORITY", 1] not in ACCEPTED_EPSG
+    ):
         # TODO: Handle other CRSs by transforming
         raise ValidationError({field: f"Unsupported shapefile CRS: {shp.srs}"})
 
-    # TODO: check geometry is polygon/multipolygon, try both
-    # TODO: After handling geometries below, see if it matters which one / coerce
-    print(shp.geom_type)
-    # TODO: loop over features: -- try multiple
-    print(shp.get_geoms())
-    # ensure valid geometry/multipolygon
-    # see about combining all records' polygons
-    #     shapely - https://shapely.readthedocs.io/en/stable/manual.html#shapely.ops.unary_union
-    #     geos - https://docs.djangoproject.com/en/3.2/ref/contrib/gis/geos/#geos-tutorial
-    #     return GEOSGeometry multipolygon
+    if shp.geom_type not in ACCEPTED_GEOMETRIES:
+        raise ValidationError(
+            {field: f"Unsupported shapefile geometry type: {shp.geom_type}"}
+        )
 
-    return polygon
+    try:
+        geometries = shp.get_geoms()
+        multipolygon = get_multipolygon_from_geometries(geometries)
+        return multipolygon
+
+    except GDALException:
+        raise ValidationError({field: f"{shp.name} contains geometries that are empty, null, or otherwise invalid"})
 
 
-def get_multipolygon_from_import_file(import_file):
-    field = import_file.field_name
-    polygon = None
+def get_multipolygon_from_import_file(import_file_field):
+    field = import_file_field.field.name
+    import_file = import_file_field.file
+    multipolygon = None
 
     try:
         content_type = import_file.content_type
@@ -100,17 +165,21 @@ def get_multipolygon_from_import_file(import_file):
         if content_type == "application/zip":
             with TemporaryDirectory() as tempdir:
                 temppath = Path(tempdir)
-                extension = get_zip_content(import_file, temppath)
+                extension = get_zip_content(import_file_field, temppath)
                 if extension is None:
                     raise ValidationError(
-                        {field: _(f"No file with accepted extension found. Supported extensions: {ACCEPTED_EXTENSIONS}")}
+                        {
+                            field: _(
+                                f"No file with accepted extension found. Supported extensions: {ACCEPTED_EXTENSIONS}"
+                            )
+                        }
                     )
 
                 if extension == ".shp":
-                    polygon = get_multipolygon_from_shp(import_file, temppath)
+                    multipolygon = get_multipolygon_from_shp(field, temppath)
                 # handle other compressed filetypes here
 
-        return polygon
+        return multipolygon
 
     except AttributeError:
         raise ValidationError({field: _("File is missing an attribute")})
