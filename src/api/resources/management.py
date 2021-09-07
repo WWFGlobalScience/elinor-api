@@ -1,9 +1,9 @@
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
+    CharFilter,
     DateFromToRangeFilter,
     RangeFilter,
 )
-from rest_framework import serializers
 from rest_framework_gis.filters import GeometryFilter
 from .base import (
     BaseAPISerializer,
@@ -73,6 +73,7 @@ class ManagementAreaFilterSet(BaseAPIFilterSet):
     version_date = DateFromToRangeFilter()
     reported_size = RangeFilter()
     intersects_polygon = GeometryFilter(field_name="polygon", lookup_expr="intersects")
+    recognition_level = CharFilter(lookup_expr='icontains')
 
     class Meta:
         model = ManagementArea
