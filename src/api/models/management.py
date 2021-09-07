@@ -12,9 +12,11 @@ from .base import (
     StakeholderGroup,
     SupportSource,
 )
+from ..utils.management import get_multipolygon_from_import_file
 
 
 class ManagementArea(BaseModel):
+    _polygon_from_file = None
     assessment_lookup = "assessment"
 
     LOCAL = "local"
@@ -88,6 +90,16 @@ class ManagementArea(BaseModel):
     import_file = models.FileField(upload_to="upload", blank=True, null=True)
     map_image = models.ImageField(upload_to="upload", blank=True, null=True)
     geospatial_sources = models.TextField(blank=True)
+
+    def clean(self):
+        if self.import_file._committed is False:
+            self._polygon_from_file = get_multipolygon_from_import_file(self.import_file)
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        if self._polygon_from_file:
+            self.polygon = self._polygon_from_file.geos
+        super().save(*args, **kwargs)
 
     class Meta:
         verbose_name = _("management area")

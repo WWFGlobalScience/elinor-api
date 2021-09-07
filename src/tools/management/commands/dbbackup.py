@@ -18,7 +18,6 @@ class Command(BaseCommand):
         self.backup = os.environ.get("BACKUP", "false").lower()
         self.env = os.environ.get("ENV", "none").lower()
         print("ENV: %s" % self.env)
-        print("BACKUP: %s" % self.backup)
         self.local_file_location = os.path.join(os.path.sep, "tmp", settings.APPNAME)
         try:
             os.mkdir(self.local_file_location)
@@ -54,6 +53,7 @@ class Command(BaseCommand):
         if self.backup in ["False", "false"]:
             print("Skipping Backup")
             return None
+        print("BACKUP: %s" % self.backup)
 
         new_aws_key_name = f"{self.backup}/{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
         new_backup_filename = f"{self.backup}_{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
