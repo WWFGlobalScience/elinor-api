@@ -24,14 +24,15 @@ DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
-# TODO: replace with frontend login url?
-LOGIN_URL = "http://localhost:8081/rest-auth/login"
+FRONTEND_DOMAIN = "https://elinordata.org"
+if ENVIRONMENT != "prod":
+    FRONTEND_DOMAIN = "https://dev.elinordata.org"
 if ENVIRONMENT not in ("prod", "dev"):
     DEBUG = True
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    LOGIN_URL = "http://localhost:8081/rest-auth/login"
+    FRONTEND_DOMAIN = "http://localhost:3000"
 
 
 # Application definition
@@ -130,13 +131,9 @@ AUTH_PASSWORD_VALIDATORS = [
 # https://docs.djangoproject.com/en/3.2/topics/i18n/
 
 LANGUAGE_CODE = "en-us"
-
 TIME_ZONE = "UTC"
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
 
@@ -211,13 +208,13 @@ SITE_ID = 1
 REST_SESSION_LOGIN = False
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_CONFIRM_EMAIL_ON_GET = True
 
 REST_AUTH_SERIALIZERS = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.UserSerializer",
+    "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
 }
 REST_AUTH_REGISTER_SERIALIZERS = {
-    "REGISTER_SERIALIZER": "api.resources.base.UserRegistrationSerializer",
+    "REGISTER_SERIALIZER": "api.resources.authuser.UserRegistrationSerializer",
 }
 
 # Needed?

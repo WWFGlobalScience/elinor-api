@@ -21,7 +21,7 @@ ALTER TABLE api_managementarea
 
 class Migration(migrations.Migration):
     dependencies = [
-        ('api', '0001_initial'),
+        ("api", "0001_initial"),
     ]
 
     operations = [
@@ -30,25 +30,44 @@ class Migration(migrations.Migration):
             reverse_sql,
             state_operations=[
                 migrations.AlterField(
-                    model_name='managementarea',
-                    name='recognition_level',
-                    field=django.contrib.postgres.fields.ArrayField(base_field=models.TextField(
-                        choices=[('local', 'local'), ('national', 'national'), ('international', 'international')]
-                    ), blank=True, default=list, size=None),
+                    model_name="managementarea",
+                    name="recognition_level",
+                    field=django.contrib.postgres.fields.ArrayField(
+                        base_field=models.TextField(
+                            choices=[
+                                ("local", "local"),
+                                ("national", "national"),
+                                ("international", "international"),
+                            ]
+                        ),
+                        blank=True,
+                        default=list,
+                        size=None,
+                    ),
                     preserve_default=False,
                 ),
-            ]
+            ],
         ),
         migrations.AddField(
-            model_name='managementarea',
-            name='containedby',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
-                                    related_name='mas_inside', to='api.managementarea'),
+            model_name="managementarea",
+            name="containedby",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="mas_inside",
+                to="api.managementarea",
+            ),
         ),
         migrations.AlterField(
-            model_name='managementarea',
-            name='parent',
-            field=models.ForeignKey(blank=True, null=True, on_delete=django.db.models.deletion.SET_NULL,
-                                    related_name='versions', to='api.managementarea'),
+            model_name="managementarea",
+            name="parent",
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name="versions",
+                to="api.managementarea",
+            ),
         ),
     ]

@@ -411,7 +411,10 @@ class Assessment(BaseModel):
             nullfields = []
             for field in self._meta.get_fields():
                 value = getattr(self, field.name)
-                if value is None and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS:
+                if (
+                    value is None
+                    and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS
+                ):
                     nullfields.append(field.name)
             if nullfields:
                 raise ValidationError(
