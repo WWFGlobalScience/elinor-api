@@ -79,7 +79,7 @@ class ManagementArea(BaseModel):
         blank=True,
         related_name="governance_mas",
     )
-    countries = CountryField(multiple=True)
+    countries = CountryField(multiple=True, blank=True)
     regions = models.ManyToManyField(Region, blank=True)
     polygon = models.MultiPolygonField(srid=4326, null=True, blank=True)
     # <= 1 billion ha; unrelated to actual geographic size
