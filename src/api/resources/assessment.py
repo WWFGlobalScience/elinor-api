@@ -1,4 +1,5 @@
 from django.db.models import Q
+from django_countries.serializers import CountryFieldMixin
 from django_filters import DateTimeFromToRangeFilter, ModelChoiceFilter
 from rest_framework import serializers
 from .base import (
@@ -14,6 +15,7 @@ from ..models import (
     Assessment,
     AssessmentChange,
     Collaborator,
+    ManagementArea,
     Organization,
 )
 from ..permissions import (
@@ -35,7 +37,22 @@ def get_assessment_related_queryset(user, model):
     if user.is_authenticated:
         qs = model.objects.prefetch_related(f"{lookup}collaborators")
         qry |= Q(**{f"{lookup}collaborators__user": user})
-    return qs.filter(qry)
+    return qs.filter(qry).distinct()
+
+
+class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
+    user = UserSerializer()
+
+    class Meta:
+        model = Collaborator
+        fields = ["id", "user", "role"]
+
+
+class AssessmentMASerializer(CountryFieldMixin, serializers.ModelSerializer):
+
+    class Meta:
+        model = ManagementArea
+        fields = ["id", "countries"]
 
 
 class AssessmentSerializer(BaseAPISerializer):
@@ -50,6 +67,8 @@ class AssessmentSerializer(BaseAPISerializer):
         required=False,
         serializer=ReadOnlyChoiceSerializer,
     )
+    collaborators = AssessmentCollaboratorSerializer(many=True, read_only=True)
+    management_area = AssessmentMASerializer(read_only=True)
 
     class Meta:
         model = Assessment
