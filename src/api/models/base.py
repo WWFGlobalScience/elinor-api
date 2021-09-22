@@ -87,7 +87,7 @@ class ManagementAuthority(BaseChoiceModel):
 
 
 class ProtectedArea(BaseChoiceModel):
-    wdpa_id = models.PositiveIntegerField(blank=True, null=True, verbose_name="WDPA ID")
+    pass
 
 
 class Region(BaseChoiceModel):
