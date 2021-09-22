@@ -62,6 +62,7 @@ class ManagementArea(BaseModel):
     protected_area = models.ForeignKey(
         ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True
     )
+    wdpa_protected_area = models.IntegerField(null=True, blank=True, verbose_name="WDPA ID")
     date_established = models.DateField(null=True, blank=True)
     version_date = models.DateField(default=datetime.date.today)
     management_authority = models.ForeignKey(

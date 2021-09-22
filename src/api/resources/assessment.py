@@ -49,7 +49,6 @@ class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
 
 
 class AssessmentMASerializer(CountryFieldMixin, serializers.ModelSerializer):
-
     class Meta:
         model = ManagementArea
         fields = ["id", "countries"]
@@ -68,7 +67,7 @@ class AssessmentSerializer(BaseAPISerializer):
         serializer=ReadOnlyChoiceSerializer,
     )
     collaborators = AssessmentCollaboratorSerializer(many=True, read_only=True)
-    management_area = AssessmentMASerializer(read_only=True)
+    management_area_countries = AssessmentMASerializer(read_only=True, source="management_area")
 
     class Meta:
         model = Assessment
@@ -183,6 +182,14 @@ class CollaboratorViewSet(BaseAPIViewSet):
     def get_queryset(self):
         return get_assessment_related_queryset(self.request.user, Collaborator)
 
+    def is_last_admin(self):
+        obj = self.get_object()
+        assessment = obj.assessment
+        admins = Collaborator.objects.filter(
+            assessment=assessment, role=Collaborator.ADMIN
+        )
+        return admins.count() < 2 and obj.pk == admins[0].pk
+
     def perform_update(self, serializer):
         original_obj = self.get_object()
         new_obj = serializer.validated_data
@@ -198,15 +205,17 @@ class CollaboratorViewSet(BaseAPIViewSet):
             raise serializers.ValidationError(
                 {"user": "Collaborator user may not be changed"}
             )
+        if self.is_last_admin():
+            raise serializers.ValidationError(
+                f"You are the last admin for {original_obj.assessment}. Create another admin before you relinquish."
+            )
         super().perform_update(serializer)
 
-    def perform_destroy(self, instance):
-        assessment = instance.assessment
-        admins = Collaborator.objects.filter(
-            assessment=assessment, role=Collaborator.ADMIN
-        )
-        if admins.count() < 2:
+    def perform_destroy(self, serializer):
+        obj = self.get_object()
+        assessment = obj.assessment
+        if self.is_last_admin():
             raise serializers.ValidationError(
-                f"You are the last admin for assessment {assessment}. Create another admin before you relinquish."
+                f"You are the last admin for {assessment}. Create another admin before you relinquish."
             )
-        super().perform_destroy(instance)
+        super().perform_destroy(serializer)
