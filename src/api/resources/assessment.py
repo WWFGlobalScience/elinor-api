@@ -1,6 +1,7 @@
 from django.db.models import Q
+from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
-from django_filters import DateTimeFromToRangeFilter, ModelChoiceFilter
+from django_filters import ChoiceFilter, DateTimeFromToRangeFilter, ModelChoiceFilter
 from rest_framework import serializers
 from .base import (
     BaseAPISerializer,
@@ -76,6 +77,7 @@ class AssessmentSerializer(BaseAPISerializer):
 
 class AssessmentFilterSet(BaseAPIFilterSet):
     person_responsible = ModelChoiceFilter(queryset=user_choice_qs)
+    management_area_countries = ChoiceFilter(field_name="management_area__countries", choices=countries)
 
     class Meta:
         model = Assessment
