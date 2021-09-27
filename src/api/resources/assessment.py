@@ -78,7 +78,7 @@ class AssessmentSerializer(BaseAPISerializer):
 class AssessmentFilterSet(BaseAPIFilterSet):
     person_responsible = ModelChoiceFilter(queryset=user_choice_qs)
     management_area_countries = ChoiceFilter(field_name="management_area__countries", choices=countries)
-
+    
     class Meta:
         model = Assessment
         exclude = ["management_plan_file"]
