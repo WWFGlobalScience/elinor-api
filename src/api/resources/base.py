@@ -69,6 +69,24 @@ class PrimaryKeyExpandedField(serializers.PrimaryKeyRelatedField):
             return self.serializer(instance, context=self.context).data
         return super().to_representation(instance)
 
+    # Same as RelatedField.get_choices except that `item.pk` is the key
+    # instead of `self.to_representation(item)`
+    def get_choices(self, cutoff=None):
+        queryset = self.get_queryset()
+        if queryset is None:
+            return {}
+
+        if cutoff is not None:
+            queryset = queryset[:cutoff]
+
+        return OrderedDict([
+            (
+                item.pk,
+                self.display_value(item)
+            )
+            for item in queryset
+        ])
+
 
 class BaseAPISerializer(serializers.ModelSerializer):
     created_on = serializers.DateTimeField(read_only=True)
@@ -118,6 +136,12 @@ class BaseChoiceViewSet(BaseAPIViewSet):
 class ReadOnlyChoiceSerializer(serializers.Serializer):
     id = serializers.IntegerField()
     name = serializers.CharField(max_length=255)
+
+    def create(self, validated_data):
+        raise NotImplementedError()
+
+    def update(self, instance, validated_data):
+        raise NotImplementedError()
 
 
 class UserSerializer(BaseAPISerializer):
