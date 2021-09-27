@@ -68,7 +68,9 @@ class AssessmentSerializer(BaseAPISerializer):
         serializer=ReadOnlyChoiceSerializer,
     )
     collaborators = AssessmentCollaboratorSerializer(many=True, read_only=True)
-    management_area_countries = AssessmentMASerializer(read_only=True, source="management_area")
+    management_area_countries = AssessmentMASerializer(
+        read_only=True, source="management_area"
+    )
 
     class Meta:
         model = Assessment
@@ -77,7 +79,13 @@ class AssessmentSerializer(BaseAPISerializer):
 
 class AssessmentFilterSet(BaseAPIFilterSet):
     person_responsible = ModelChoiceFilter(queryset=user_choice_qs)
-    management_area_countries = ChoiceFilter(field_name="management_area__countries", choices=countries)
+    # actual management_area__countries field is varchar like "US,AX,ES"
+    # Filter depends on lookup_expr="icontains" with field storing unique 2-character country codes
+    management_area_countries = ChoiceFilter(
+        field_name="management_area__countries",
+        choices=countries,
+        lookup_expr="icontains",
+    )
 
     class Meta:
         model = Assessment
