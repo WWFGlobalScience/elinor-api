@@ -62,6 +62,12 @@ class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
         required=False,
         serializer=ReadOnlyChoiceSerializer,
     )
+    containedby = PrimaryKeyExpandedField(
+        queryset=ManagementArea.objects.all(),
+        allow_null=True,
+        required=False,
+        serializer=ReadOnlyChoiceSerializer,
+    )
 
     class Meta:
         model = ManagementArea
