@@ -62,7 +62,9 @@ class ManagementArea(BaseModel):
     protected_area = models.ForeignKey(
         ProtectedArea, on_delete=models.SET_NULL, blank=True, null=True
     )
-    wdpa_protected_area = models.IntegerField(null=True, blank=True, verbose_name="WDPA ID")
+    wdpa_protected_area = models.IntegerField(
+        null=True, blank=True, verbose_name="WDPA ID"
+    )
     date_established = models.DateField(null=True, blank=True)
     version_date = models.DateField(default=datetime.date.today)
     management_authority = models.ForeignKey(
@@ -91,10 +93,13 @@ class ManagementArea(BaseModel):
     import_file = models.FileField(upload_to="upload", blank=True, null=True)
     map_image = models.ImageField(upload_to="upload", blank=True, null=True)
     geospatial_sources = models.TextField(blank=True)
+    objectives = models.TextField(blank=True)
 
     def clean(self):
         if self.import_file._committed is False:
-            self._polygon_from_file = get_multipolygon_from_import_file(self.import_file)
+            self._polygon_from_file = get_multipolygon_from_import_file(
+                self.import_file
+            )
 
     def save(self, *args, **kwargs):
         self.full_clean()

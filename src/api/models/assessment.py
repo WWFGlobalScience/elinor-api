@@ -35,6 +35,25 @@ class Assessment(BaseModel):
         (COMMUNITY, _("community leaders / representatives")),
     )
 
+    PERSON_RESPONSIBLE = 10
+    PERSON_RESPONSIBLE_AND_EXTERNAL = 20
+    INTERVIEWS = 30
+    COLLECTION_METHOD_CHOICES = (
+        (
+            PERSON_RESPONSIBLE,
+            _(
+                "Through knowledge of the person(s) responsible for filling out assessment"
+            ),
+        ),
+        (
+            PERSON_RESPONSIBLE_AND_EXTERNAL,
+            _(
+                "Through knowledge of the person(s) responsible for filling our assessment  and acquired external input from informal conversations and secondary documents"
+            ),
+        ),
+        (INTERVIEWS, _("Through semi-structured interviews and focus group")),
+    )
+
     name = models.CharField(max_length=255)
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, blank=True, null=True
@@ -61,23 +80,35 @@ class Assessment(BaseModel):
         blank=True,
         default=None,
     )
-    count_manager = models.PositiveSmallIntegerField(
-        default=0, verbose_name=_("MA manager count")
+    count_community = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("local community leader count")
     )
-    count_personnel = models.PositiveSmallIntegerField(
-        default=0, verbose_name=_("MA personnel count")
+    count_ngo = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("NGO personnel count")
+    )
+    count_academic = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("academic personnel count")
     )
     count_government = models.PositiveSmallIntegerField(
         default=0, verbose_name=_("government personnel count")
     )
-    count_committee = models.PositiveSmallIntegerField(
-        default=0, verbose_name=_("local community/indigenous committee count")
+    count_private = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("private sector personnel count")
     )
-    count_community = models.PositiveSmallIntegerField(
-        default=0, verbose_name=_("community leader count")
+    count_indigenous = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("indigenous leader count")
     )
     consent_given = models.BooleanField(default=False)
     management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
+    collection_method = models.PositiveSmallIntegerField(
+        choices=COLLECTION_METHOD_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name=_(
+            "Please choose which option best describes how information for this assessment was collected"
+        ),
+    )
+    collection_method_text = models.TextField(blank=True)
 
     stakeholder_harvest_rights = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,

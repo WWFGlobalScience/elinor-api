@@ -79,13 +79,7 @@ class PrimaryKeyExpandedField(serializers.PrimaryKeyRelatedField):
         if cutoff is not None:
             queryset = queryset[:cutoff]
 
-        return OrderedDict([
-            (
-                item.pk,
-                self.display_value(item)
-            )
-            for item in queryset
-        ])
+        return OrderedDict([(item.pk, self.display_value(item)) for item in queryset])
 
 
 class BaseAPISerializer(serializers.ModelSerializer):

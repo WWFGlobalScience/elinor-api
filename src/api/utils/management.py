@@ -140,7 +140,11 @@ def get_multipolygon_from_shp(field, shapefiledir):
         return multipolygon
 
     except GDALException:
-        raise ValidationError({field: f"{shp.name} contains geometries that are empty, null, or otherwise invalid"})
+        raise ValidationError(
+            {
+                field: f"{shp.name} contains geometries that are empty, null, or otherwise invalid"
+            }
+        )
 
 
 def get_multipolygon_from_import_file(import_file_field):
