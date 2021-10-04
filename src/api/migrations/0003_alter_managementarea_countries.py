@@ -7,13 +7,15 @@ import django_countries.fields
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('api', '0002_alter_ma_recognition_level_add_ma_containedby'),
+        ("api", "0002_alter_ma_recognition_level_add_ma_containedby"),
     ]
 
     operations = [
         migrations.AlterField(
-            model_name='managementarea',
-            name='countries',
-            field=django_countries.fields.CountryField(blank=True, max_length=746, multiple=True),
+            model_name="managementarea",
+            name="countries",
+            field=django_countries.fields.CountryField(
+                blank=True, max_length=746, multiple=True
+            ),
         ),
     ]

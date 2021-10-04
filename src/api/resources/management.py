@@ -1,9 +1,14 @@
+import itertools
+from django_countries.fields import Country
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
     CharFilter,
+    ChoiceFilter,
     DateFromToRangeFilter,
     RangeFilter,
 )
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from rest_framework_gis.filters import GeometryFilter
 from .base import (
     BaseAPISerializer,
@@ -13,6 +18,7 @@ from .base import (
     ReadOnlyChoiceSerializer,
 )
 from ..models import (
+    Assessment,
     GovernanceType,
     ManagementArea,
     ManagementAreaZone,
@@ -69,6 +75,13 @@ class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
         serializer=ReadOnlyChoiceSerializer,
     )
 
+    def save(self, **kwargs):
+        if "countries" in self.validated_data:
+            countries = self.validated_data["countries"]
+            unique_countries = list(set(countries))
+            self.validated_data["countries"] = unique_countries
+        return super().save(**kwargs)
+
     class Meta:
         model = ManagementArea
         exclude = []
@@ -80,6 +93,10 @@ class ManagementAreaFilterSet(BaseAPIFilterSet):
     reported_size = RangeFilter()
     intersects_polygon = GeometryFilter(field_name="polygon", lookup_expr="intersects")
     recognition_level = CharFilter(lookup_expr="icontains")
+    assessment_data_policy = ChoiceFilter(
+        choices=Assessment.DATA_POLICIES,
+        field_name="assessment__data_policy",
+    )
 
     class Meta:
         model = ManagementArea
@@ -93,6 +110,23 @@ class ManagementAreaViewSet(BaseAPIViewSet):
     filter_class = ManagementAreaFilterSet
     search_fields = ["name", "protected_area__name", "management_authority__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
+
+    @action(methods=["GET"], detail=False)
+    def countries(self, request):
+        chosen_countries_qs = self.get_queryset().values_list("countries")
+        chosen_countries = [c[0].split(",") for c in chosen_countries_qs]
+        chosen_countries_flattened = list(
+            itertools.chain.from_iterable(chosen_countries)
+        )
+        unique_chosen_countries = [
+            Country(c) for c in list(set(chosen_countries_flattened))
+        ]
+        response = [
+            {"code": c.code, "name": c.name, "flag": c.flag}
+            for c in unique_chosen_countries
+        ]
+
+        return Response(response)
 
 
 class ManagementAreaZoneSerializer(BaseAPISerializer):
