@@ -72,6 +72,7 @@ class Assessment(BaseModel):
         null=True,
         blank=True,
     )
+    person_responsible_role_other = models.CharField(max_length=255, blank=True)
     year = models.PositiveSmallIntegerField()
     management_area = models.OneToOneField(
         ManagementArea,
