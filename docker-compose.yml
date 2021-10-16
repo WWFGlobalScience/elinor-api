@@ -1,0 +1,27 @@
+version: '3.8'
+
+services:
+  elinor_db:
+    container_name: elinor_db
+    image: postgis/postgis:13-3.1-alpine
+    environment:
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_USER=postgres
+    ports:
+      - 5433:5432
+
+  elinor_api:
+    container_name: elinor_api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: elinor/api:latest
+    volumes:
+      - $PWD/src:/var/projects/webapp
+    ports:
+      - 8081:8081
+    env_file:
+      - .env
+
+    links:
+      - elinor_db

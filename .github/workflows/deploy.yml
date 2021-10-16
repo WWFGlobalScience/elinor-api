@@ -1,0 +1,82 @@
+name: Deploy app to AWS Elastic Beanstalk
+
+on:
+  push:
+    branches:
+      - dev
+    tags:
+      - v[0-9]+.[0-9]+*  # v1.2[.3]
+
+env:
+  APP: elinor
+  IMAGE_ID: ghcr.io/wwfglobalscience/elinor-api
+
+jobs:
+  environment:
+    name: Determine environment
+    runs-on: ubuntu-latest
+    outputs:
+      env: ${{ env.ENV }}
+    steps:
+      - id: default
+        run: echo "ENV=dev" >> $GITHUB_ENV
+      - id: prod
+        if: startsWith(github.ref, 'refs/tags/v')
+        run: echo "ENV::prod" >> $GITHUB_ENV
+
+  build_and_push:
+    needs: environment
+    name: Build Docker image and push to GitHub Packages
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Login to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v1
+        with:
+          registry: ghcr.io
+          username: ${{ github.repository_owner }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build image
+        run: |
+          docker build -t $IMAGE_ID:${{ github.sha }} -f Dockerfile --rm --no-cache .
+      - name: Push
+        run: |
+          docker tag $IMAGE_ID:${{ github.sha }} $IMAGE_ID:${{ needs.environment.outputs.env }}
+          docker push $IMAGE_ID:${{ needs.environment.outputs.env }}
+
+  deploy_eb:
+    needs: [environment, build_and_push]
+    name: Deploy to Elastic Beanstalk
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ secrets.AWS_REGION }}
+      - name: Create EB app version and update environment
+        run: |
+          BUNDLE=${{ env.APP }}-${{ needs.environment.outputs.env }}.zip
+          sed "s/<TAG>/${{ needs.environment.outputs.env }}/" <Dockerrun.aws.json.template >"Dockerrun.aws.json"
+          zip -r $BUNDLE .platform
+          zip -u $BUNDLE Dockerrun.aws.json
+
+          echo "Copy bundle to S3"
+          aws s3 cp $BUNDLE s3://${{ secrets.AWS_EB_BUCKET }}/$BUNDLE --region ${{ secrets.AWS_REGION }}
+
+          echo "Creating Elastic Beanstalk version"
+          aws elasticbeanstalk create-application-version \
+            --application-name ${{ env.APP }} \
+            --version-label ${{ github.sha }} \
+            --region ${{ secrets.AWS_REGION }} \
+            --source-bundle S3Bucket=${{ secrets.AWS_EB_BUCKET }},S3Key=$BUNDLE
+
+          echo "Updating Elastic Beanstalk environment"
+          aws elasticbeanstalk update-environment \
+            --environment-name "${{ env.APP }}-${{ needs.environment.outputs.env }}" \
+            --version-label ${{ github.sha }}
