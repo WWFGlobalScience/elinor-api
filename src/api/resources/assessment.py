@@ -1,7 +1,12 @@
 from django.db.models import Q
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
-from django_filters import ChoiceFilter, DateTimeFromToRangeFilter, ModelChoiceFilter
+from django_filters import (
+    ChoiceFilter,
+    DateTimeFromToRangeFilter,
+    ModelChoiceFilter,
+    NumberFilter,
+)
 from rest_framework import serializers
 from .base import (
     BaseAPISerializer,
@@ -86,6 +91,7 @@ class AssessmentFilterSet(BaseAPIFilterSet):
         choices=countries,
         lookup_expr="icontains",
     )
+    collaborators = NumberFilter(field_name="collaborators__user", distinct=True)
 
     class Meta:
         model = Assessment
