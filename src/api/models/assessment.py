@@ -235,16 +235,6 @@ class Assessment(BaseModel):
         ),
     )
     penalties_frequency_text = models.TextField(blank=True)
-    multiple_knowledge_ecological = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do planning and management processes draw on multiple knowledge sources (scientific, experiential, "
-            "local, and traditional knowledge) for monitoring the ecological impacts of the MA?"
-        ),
-    )
-    multiple_knowledge_ecological_text = models.TextField(blank=True)
     multiple_knowledge_social = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
@@ -351,16 +341,25 @@ class Assessment(BaseModel):
         ),
     )
     multiple_knowledge_integrated_text = models.TextField(blank=True)
-    monitoring_used = models.PositiveSmallIntegerField(
+    ecological_monitoring_used = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
         blank=True,
         verbose_name=_(
-            "Are the results of monitoring, research and evaluation routinely incorporated into decisions and/or "
-            "policies related to MA management?"
+            "Are systems in place to monitor and document ecological conditions in the MA?"
         ),
     )
-    monitoring_used_text = models.TextField(blank=True)
+    ecological_monitoring_used_text = models.TextField(blank=True)
+    social_monitoring_used = models.PositiveSmallIntegerField(
+        choices=LIKERT_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name=_(
+            "Are systems in place to monitor and document the social conditions of "
+            "communities in and/or adjacent to the MA?"
+        ),
+    )
+    social_monitoring_used_text = models.TextField(blank=True)
     sufficient_staff = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
@@ -399,16 +398,6 @@ class Assessment(BaseModel):
         verbose_name=_("Is equipment sufficient for management needs?"),
     )
     sufficient_equipment_text = models.TextField(blank=True)
-    climatechange_assessed = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Have observed and anticipated changes in climate, and their associated impacts on people and nature, "
-            "been assessed, understood, and documented?"
-        ),
-    )
-    climatechange_assessed_text = models.TextField(blank=True)
     climatechange_incorporated = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
