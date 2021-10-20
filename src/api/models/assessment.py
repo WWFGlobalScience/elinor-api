@@ -351,16 +351,25 @@ class Assessment(BaseModel):
         ),
     )
     multiple_knowledge_integrated_text = models.TextField(blank=True)
-    monitoring_used = models.PositiveSmallIntegerField(
+    ecological_monitoring_used = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
         blank=True,
         verbose_name=_(
-            "Are the results of monitoring, research and evaluation routinely incorporated into decisions and/or "
-            "policies related to MA management?"
+            "Are systems in place to monitor and document ecological conditions in the MA?"
         ),
     )
-    monitoring_used_text = models.TextField(blank=True)
+    ecological_monitoring_used_text = models.TextField(blank=True)
+    social_monitoring_used = models.PositiveSmallIntegerField(
+        choices=LIKERT_CHOICES,
+        null=True,
+        blank=True,
+        verbose_name=_(
+            "Are systems in place to monitor and document the social conditions of "
+            "communities in and/or adjacent to the MA?"
+        ),
+    )
+    social_monitoring_used_text = models.TextField(blank=True)
     sufficient_staff = models.PositiveSmallIntegerField(
         choices=LIKERT_CHOICES,
         null=True,
