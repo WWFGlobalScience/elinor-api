@@ -51,7 +51,7 @@ class Assessment(BaseModel):
                 "Through knowledge of the person(s) responsible for filling our assessment  and acquired external input from informal conversations and secondary documents"
             ),
         ),
-        (INTERVIEWS, _("Through semi-structured interviews and focus group")),
+        (INTERVIEWS, _("Through semi-structured interviews and/or focus groups")),
     )
 
     name = models.CharField(max_length=255)
