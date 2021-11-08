@@ -38,6 +38,8 @@ class Assessment(BaseModel):
     PERSON_RESPONSIBLE = 10
     PERSON_RESPONSIBLE_AND_EXTERNAL = 20
     INTERVIEWS = 30
+    COMBINATION_COLLECTION_METHOD = 40
+    OTHER_COLLECTION_METHOD = 50
     COLLECTION_METHOD_CHOICES = (
         (
             PERSON_RESPONSIBLE,
@@ -52,6 +54,8 @@ class Assessment(BaseModel):
             ),
         ),
         (INTERVIEWS, _("Through semi-structured interviews and/or focus groups")),
+        (COMBINATION_COLLECTION_METHOD, _("A combination of the above")),
+        (OTHER_COLLECTION_METHOD, _("Other (please provide details below)")),
     )
 
     name = models.CharField(max_length=255)
@@ -100,6 +104,7 @@ class Assessment(BaseModel):
         default=0, verbose_name=_("indigenous leader count")
     )
     consent_given = models.BooleanField(default=False)
+    consent_given_written = models.BooleanField(default=False)
     management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
     collection_method = models.PositiveSmallIntegerField(
         choices=COLLECTION_METHOD_CHOICES,
