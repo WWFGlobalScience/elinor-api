@@ -104,6 +104,7 @@ class Assessment(BaseModel):
         default=0, verbose_name=_("indigenous leader count")
     )
     consent_given = models.BooleanField(default=False)
+    consent_given_written = models.BooleanField(default=False)
     management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
     collection_method = models.PositiveSmallIntegerField(
         choices=COLLECTION_METHOD_CHOICES,
