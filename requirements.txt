@@ -1,5 +1,5 @@
 Django==3.2.5
-Pillow==8.3.2
+Pillow==9.0.0
 boto3==1.17.69
 dj-rest-auth[with_social]==2.1.9
 django-cors-headers==3.7.0
