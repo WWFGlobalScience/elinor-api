@@ -191,7 +191,7 @@ class CountryListFilter(admin.SimpleListFilter):
         if self.value():
             if _field.multiple:
                 return queryset.filter(country__icontains=self.value())
-            return queryset.filter(country=self.value())
+            return queryset.filter(country__iname=self.value())
         else:
             return queryset
 
