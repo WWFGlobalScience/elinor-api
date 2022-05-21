@@ -2,7 +2,7 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
-from .base import LIKERT_CHOICES, BaseModel, Organization
+from .base import LIKERT_CHOICES, AssessmentVersion, BaseModel, Organization
 from .management import ManagementArea
 
 
@@ -58,6 +58,7 @@ class Assessment(BaseModel):
         (OTHER_COLLECTION_METHOD, _("Other (please provide details below)")),
     )
 
+    version = models.ForeignKey(AssessmentVersion, on_delete=models.PROTECT)
     name = models.CharField(max_length=255)
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, blank=True, null=True
@@ -532,3 +533,37 @@ class AssessmentChange(BaseModel):
 
     def __str__(self):
         return f"{self.event_on} {self.assessment} {self.event_type}"
+
+
+class SurveyQuestion(BaseModel):
+    LOCAL_STAKEHOLDERS = "local stakeholders"
+    GOVERNANCE = "governance"
+    DOMAINS = (
+        (LOCAL_STAKEHOLDERS, _(LOCAL_STAKEHOLDERS)),
+        (GOVERNANCE, _(GOVERNANCE)),
+    )
+
+    key = models.CharField(max_length=255, unique=True)  # migration: populate with current field name
+    domain = models.CharField(max_length=255, choices=DOMAINS)
+    order = models.PositiveSmallIntegerField()
+    text = models.TextField()  # migration: populate with current verbose_name
+
+    class Meta:
+        unique_together = ("domain", "order")
+        ordering = ["domain", "order"]
+
+
+class SurveyAnswer(BaseModel):
+    assessment_lookup = "assessment"
+
+    assessment = models.ForeignKey(
+        Assessment, related_name="assessment_surveyanswers", on_delete=models.PROTECT
+    )
+    question = models.ForeignKey(
+        SurveyQuestion, related_name="surveyquestion_answers", on_delete=models.PROTECT
+    )
+    choice = models.PositiveSmallIntegerField(choices=LIKERT_CHOICES)
+    explanation = models.TextField(blank=True)
+
+    class Meta:
+        unique_together = ("assessment", "question")

@@ -104,3 +104,7 @@ class StakeholderGroup(BaseChoiceModel):
 
 class SupportSource(BaseChoiceModel):
     pass
+
+
+class AssessmentVersion(BaseChoiceModel):
+    pass
