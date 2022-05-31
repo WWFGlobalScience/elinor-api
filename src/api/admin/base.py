@@ -132,11 +132,6 @@ class BaseChoiceAdmin(admin.ModelAdmin):
     actions = (export_model_display_as_csv, export_model_all_as_csv)
 
 
-@admin.register(Organization)
-class OrganizationAdmin(BaseChoiceAdmin):
-    pass
-
-
 admin.site.unregister(UserModel)
 
 
@@ -196,6 +191,19 @@ class CountryListFilter(admin.SimpleListFilter):
             return queryset
 
 
+@admin.register(AssessmentVersion)
+class AssessmentVersionAdmin(BaseAdmin):
+    list_display = ["year", "major_version", "updated_on"]
+
+    def has_add_permission(self, request):
+        return False
+
+
+@admin.register(Attribute)
+class AttributeAdmin(BaseChoiceAdmin):
+    list_display = ["name", "required"]
+
+
 @admin.register(GovernanceType)
 class GovernanceTypeAdmin(BaseChoiceAdmin):
     pass
@@ -203,6 +211,11 @@ class GovernanceTypeAdmin(BaseChoiceAdmin):
 
 @admin.register(ManagementAuthority)
 class ManagementAuthorityAdmin(BaseChoiceAdmin):
+    pass
+
+
+@admin.register(Organization)
+class OrganizationAdmin(BaseChoiceAdmin):
     pass
 
 

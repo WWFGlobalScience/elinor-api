@@ -62,3 +62,13 @@ class CollaboratorAdmin(BaseAdmin):
     @admin.display(description="collaborator", ordering="assessment__name")
     def selfstr(self, obj):
         return obj.__str__()
+
+
+@admin.register(SurveyQuestionLikert)
+class SurveyQuestionLikertAdmin(BaseAdmin):
+    list_display = ["key", "number", "attribute"] + BaseAdmin.list_display
+
+
+@admin.register(SurveyAnswerLikert)
+class SurveyAnswerLikertAdmin(BaseAdmin):
+    list_display = ["question", "assessment", "choice"] + BaseAdmin.list_display

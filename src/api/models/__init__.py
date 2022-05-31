@@ -1,4 +1,6 @@
 from .base import (
+    AssessmentVersion,
+    Attribute,
     GovernanceType,
     ManagementAuthority,
     Organization,
@@ -16,4 +18,6 @@ from .assessment import (
     Assessment,
     AssessmentChange,
     Collaborator,
+    SurveyQuestionLikert,
+    SurveyAnswerLikert,
 )
