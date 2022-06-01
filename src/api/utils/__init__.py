@@ -26,11 +26,8 @@ def update_assessment_version(**kwargs):
         if current_version:
             days_since_last = (today - current_version.updated_on.date()).days
             new_version_year = current_version.year
-            new_major_version = current_version.major_version + 1
-
-        if today.year != new_version_year:
-            new_version_year = today.year
-            new_major_version = 1
+            if today.year == current_version.year:
+                new_major_version = current_version.major_version + 1
 
         if days_since_last > 0:
             AssessmentVersion.objects.create(

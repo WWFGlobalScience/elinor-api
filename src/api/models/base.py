@@ -42,6 +42,10 @@ class AssessmentVersionMixin(models.Model):
         if changed:
             update_assessment_version()
 
+    def delete(self, *args, **kwargs):
+        super().delete(*args, **kwargs)
+        update_assessment_version()
+
     class Meta:
         abstract = True
 
