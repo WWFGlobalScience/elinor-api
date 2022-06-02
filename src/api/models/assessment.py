@@ -2,7 +2,13 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.utils.translation import ugettext_lazy as _
-from .base import LIKERT_CHOICES, BaseModel, Organization
+from .base import (
+    LIKERT_CHOICES,
+    AssessmentVersion,
+    Attribute,
+    BaseModel,
+    Organization,
+)
 from .management import ManagementArea
 
 
@@ -58,6 +64,9 @@ class Assessment(BaseModel):
         (OTHER_COLLECTION_METHOD, _("Other (please provide details below)")),
     )
 
+    published_version = models.ForeignKey(
+        AssessmentVersion, blank=True, null=True, on_delete=models.PROTECT
+    )
     name = models.CharField(max_length=255)
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, blank=True, null=True
@@ -66,6 +75,7 @@ class Assessment(BaseModel):
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
     )
+    attributes = models.ManyToManyField(Attribute)
     person_responsible = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -532,3 +542,61 @@ class AssessmentChange(BaseModel):
 
     def __str__(self):
         return f"{self.event_on} {self.assessment} {self.event_type}"
+
+
+class SurveyQuestion(BaseModel):
+    attribute = models.ForeignKey(
+        Attribute, related_name="attribute_questions", on_delete=models.PROTECT
+    )
+    key = models.CharField(
+        max_length=255, unique=True
+    )  # migration: populate with current field name
+    number = models.PositiveSmallIntegerField(unique=True)
+    text = models.TextField()  # migration: populate with current verbose_name
+    rationale = models.TextField()
+    information = models.TextField()
+    guidance = models.TextField()
+
+    class Meta:
+        abstract = True
+        ordering = ["number"]
+
+    def __str__(self):
+        return f"{self.key}"
+
+
+class SurveyQuestionLikert(SurveyQuestion):
+    dontknow_10 = models.TextField()
+    poor_20 = models.TextField()
+    average_30 = models.TextField()
+    good_40 = models.TextField()
+    excellent_50 = models.TextField()
+
+    class Meta:
+        verbose_name = "Likert survey question"
+
+
+class SurveyAnswer(BaseModel):
+    assessment_lookup = "assessment"
+
+    assessment = models.ForeignKey(Assessment, on_delete=models.PROTECT)
+
+    class Meta:
+        abstract = True
+        unique_together = ("assessment", "question")
+
+
+class SurveyAnswerLikert(SurveyAnswer):
+    question = models.ForeignKey(
+        SurveyQuestionLikert,
+        related_name="questionlikert_answers",
+        on_delete=models.PROTECT,
+    )
+    choice = models.PositiveSmallIntegerField(choices=LIKERT_CHOICES)
+    explanation = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "Likert survey answer"
+
+    def __str__(self):
+        return f"{self.assessment} {self.question}"

@@ -20,6 +20,12 @@ class AssessmentChangeInline(admin.TabularInline):
         return False
 
 
+class SurveyAnswerLikertInline(admin.TabularInline):
+    model = SurveyAnswerLikert
+    exclude = ("created_by", "updated_by")
+    extra = 0
+
+
 @admin.register(Assessment)
 class AssessmentAdmin(BaseAdmin):
     list_display = [
@@ -32,10 +38,10 @@ class AssessmentAdmin(BaseAdmin):
     search_fields = [
         "name",
         "management_area__name",
-        "organization",
+        "organization__name",
     ]
     list_filter = ["status", "data_policy", "year", "management_area"]
-    inlines = [AssessmentChangeInline]
+    inlines = [SurveyAnswerLikertInline, AssessmentChangeInline]
 
     def save_model(self, request, obj, form, change):
         if change:
@@ -62,3 +68,13 @@ class CollaboratorAdmin(BaseAdmin):
     @admin.display(description="collaborator", ordering="assessment__name")
     def selfstr(self, obj):
         return obj.__str__()
+
+
+@admin.register(SurveyQuestionLikert)
+class SurveyQuestionLikertAdmin(BaseAdmin):
+    list_display = ["key", "number", "attribute"] + BaseAdmin.list_display
+
+
+@admin.register(SurveyAnswerLikert)
+class SurveyAnswerLikertAdmin(BaseAdmin):
+    list_display = ["question", "assessment", "choice"] + BaseAdmin.list_display

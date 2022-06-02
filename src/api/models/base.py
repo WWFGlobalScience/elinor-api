@@ -104,3 +104,19 @@ class StakeholderGroup(BaseChoiceModel):
 
 class SupportSource(BaseChoiceModel):
     pass
+
+
+class AssessmentVersion(BaseModel):
+    year = models.PositiveSmallIntegerField()
+    major_version = models.PositiveSmallIntegerField()
+    text = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["year", "major_version"]
+
+    def __str__(self):
+        return f"{self.year}.{self.major_version}"
+
+
+class Attribute(BaseChoiceModel):
+    required = models.BooleanField(default=True)
