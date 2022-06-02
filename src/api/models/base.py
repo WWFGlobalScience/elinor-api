@@ -2,7 +2,6 @@ from django.conf import settings
 from django.contrib.gis.db import models
 from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
-from ..utils import update_assessment_version
 
 
 DONTKNOW = 10
@@ -17,37 +16,6 @@ LIKERT_CHOICES = (
     (GOOD, _(f"good [{GOOD}]")),
     (EXCELLENT, _(f"excellent [{EXCELLENT}]")),
 )
-
-
-class AssessmentVersionMixin(models.Model):
-    def save(self, *args, **kwargs):
-        changed = False
-        ignore_fields = ["created_on", "created_by", "updated_on", "updated_by"]
-        old = type(self).objects.get(pk=self.pk) if self.pk else None
-        super().save(*args, **kwargs)
-
-        if not old:  # new instance
-            changed = True
-        else:
-            compare_fields = [
-                f
-                for f in self._meta.get_fields()
-                if f.concrete and f.name not in ignore_fields
-            ]
-            for field in compare_fields:
-                if getattr(old, field.name) != getattr(self, field.name):
-                    changed = True
-                    break
-
-        if changed:
-            update_assessment_version()
-
-    def delete(self, *args, **kwargs):
-        super().delete(*args, **kwargs)
-        update_assessment_version()
-
-    class Meta:
-        abstract = True
 
 
 class BaseModel(models.Model):
@@ -106,7 +74,7 @@ class Profile(BaseModel):
         return f"{str(name)} {_('profile')}"
 
 
-class GovernanceType(BaseChoiceModel, AssessmentVersionMixin):
+class GovernanceType(BaseChoiceModel):
     pass
 
 
@@ -130,17 +98,18 @@ class Region(BaseChoiceModel):
         unique_together = ("name", "country")
 
 
-class StakeholderGroup(BaseChoiceModel, AssessmentVersionMixin):
+class StakeholderGroup(BaseChoiceModel):
     pass
 
 
-class SupportSource(BaseChoiceModel, AssessmentVersionMixin):
+class SupportSource(BaseChoiceModel):
     pass
 
 
 class AssessmentVersion(BaseModel):
     year = models.PositiveSmallIntegerField()
     major_version = models.PositiveSmallIntegerField()
+    text = models.TextField(blank=True)
 
     class Meta:
         ordering = ["year", "major_version"]

@@ -195,9 +195,6 @@ class CountryListFilter(admin.SimpleListFilter):
 class AssessmentVersionAdmin(BaseAdmin):
     list_display = ["year", "major_version", "updated_on"]
 
-    def has_add_permission(self, request):
-        return False
-
 
 @admin.register(Attribute)
 class AttributeAdmin(BaseChoiceAdmin):

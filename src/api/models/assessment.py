@@ -5,7 +5,6 @@ from django.utils.translation import ugettext_lazy as _
 from .base import (
     LIKERT_CHOICES,
     AssessmentVersion,
-    AssessmentVersionMixin,
     Attribute,
     BaseModel,
     Organization,
@@ -545,7 +544,7 @@ class AssessmentChange(BaseModel):
         return f"{self.event_on} {self.assessment} {self.event_type}"
 
 
-class SurveyQuestion(BaseModel, AssessmentVersionMixin):
+class SurveyQuestion(BaseModel):
     attribute = models.ForeignKey(
         Attribute, related_name="attribute_questions", on_delete=models.PROTECT
     )
