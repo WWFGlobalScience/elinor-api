@@ -23,7 +23,7 @@ from dj_rest_auth.registration.views import VerifyEmailView, ConfirmEmailView
 
 urlpatterns = [
     path("admin/", admin.site.urls),
-    path("v1/", include(api_urls), name="api-root"),
+    path("v2/", include(api_urls), name="api-root"),
     path(
         "api-sessionauth/", include("rest_framework.urls", namespace="rest_framework")
     ),

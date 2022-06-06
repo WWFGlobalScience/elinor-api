@@ -1,7 +1,7 @@
 from django.contrib import admin
 from .base import BaseAdmin
 from ..models.assessment import *
-from ..utils.assessment import log_assessment_change
+from ..utils.assessment import enforce_required_attributes, log_assessment_change
 
 
 class AssessmentChangeInline(admin.TabularInline):
@@ -51,6 +51,11 @@ class AssessmentAdmin(BaseAdmin):
             log_assessment_change(original_assessment, obj, editor)
         else:
             super().save_model(request, obj, form, change)
+
+    def save_related(self, request, form, formsets, change):
+        super().save_related(request, form, formsets, change)
+        obj = form.instance
+        enforce_required_attributes(obj)
 
 
 @admin.register(Collaborator)
