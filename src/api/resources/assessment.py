@@ -20,16 +20,19 @@ from .base import (
 from ..models import (
     Assessment,
     AssessmentChange,
+    Attribute,
     Collaborator,
     ManagementArea,
     Organization,
+    SurveyQuestionLikert,
+    SurveyAnswerLikert,
 )
 from ..permissions import (
     ReadOnly,
     AssessmentReadOnlyOrAuthenticatedUserPermission,
     CollaboratorReadOnlyOrAuthenticatedUserPermission,
 )
-from ..utils.assessment import log_assessment_change
+from ..utils.assessment import enforce_required_attributes, log_assessment_change
 
 
 def get_assessment_related_queryset(user, model):
@@ -76,6 +79,22 @@ class AssessmentSerializer(BaseAPISerializer):
     management_area_countries = AssessmentMASerializer(
         read_only=True, source="management_area"
     )
+    published_version = serializers.StringRelatedField(read_only=True)
+
+    # def validate(self, data):
+    #     required_attributes = Attribute.objects.filter(required=True)
+    #     _attributes = []
+    #     if self.instance:  # existing attributes, if any
+    #         _attributes = self.instance.attributes.all()
+    #     if data and "attributes" in data:  # proposed new attributes, if any
+    #         _attributes = data["attributes"]
+    #     missing_required = [str(ra) for ra in required_attributes if ra not in _attributes]
+    #
+    #     if missing_required:
+    #         msg = f"May not save without including required attributes: {', '.join(missing_required)}"
+    #         raise serializers.ValidationError({"attributes": _(msg)})
+    #
+    #     return data
 
     class Meta:
         model = Assessment
@@ -113,6 +132,7 @@ class AssessmentViewSet(BaseAPIViewSet):
     def perform_create(self, serializer):
         user = self.request.user
         assessment = serializer.save()
+        enforce_required_attributes(assessment)
         Collaborator.objects.create(
             assessment=assessment, user=user, role=Collaborator.ADMIN
         )
@@ -121,6 +141,7 @@ class AssessmentViewSet(BaseAPIViewSet):
         user = self.request.user
         original_assessment = self.get_object()
         edited_assessment = serializer.save()
+        enforce_required_attributes(edited_assessment)
         log_assessment_change(original_assessment, edited_assessment, user)
 
 
@@ -186,7 +207,6 @@ class CollaboratorFilterSet(BaseAPIFilterSet):
 
 
 class CollaboratorViewSet(BaseAPIViewSet):
-    queryset = Collaborator.objects.all()
     ordering = ["assessment", "user"]
     serializer_class = CollaboratorSerializer
     filter_class = CollaboratorFilterSet
@@ -235,3 +255,56 @@ class CollaboratorViewSet(BaseAPIViewSet):
                 f"You are the last admin for {assessment}. Create another admin before you relinquish."
             )
         super().perform_destroy(serializer)
+
+
+class SurveyQuestionLikertSerializer(BaseAPISerializer):
+    class Meta:
+        model = SurveyQuestionLikert
+        exclude = []
+
+
+class SurveyQuestionLikertFilterSet(BaseAPIFilterSet):
+    class Meta:
+        model = SurveyQuestionLikert
+        exclude = []
+
+
+class SurveyQuestionLikertViewSet(BaseAPIViewSet):
+    queryset = SurveyQuestionLikert.objects.all()
+    serializer_class = SurveyQuestionLikertSerializer
+    filter_class = SurveyQuestionLikertFilterSet
+    permission_classes = [
+        ReadOnly,
+    ]
+
+
+class SurveyAnswerLikertSerializer(BaseAPISerializer):
+    assessment = PrimaryKeyExpandedField(
+        queryset=Assessment.objects.all(),
+        serializer=ReadOnlyChoiceSerializer,
+    )
+    question = PrimaryKeyExpandedField(
+        queryset=SurveyQuestionLikert.objects.all(),
+        serializer=SurveyQuestionLikertSerializer,
+    )
+
+    class Meta:
+        model = SurveyAnswerLikert
+        exclude = []
+
+
+class SurveyAnswerLikertFilterSet(BaseAPIFilterSet):
+    class Meta:
+        model = SurveyAnswerLikert
+        exclude = []
+
+
+class SurveyAnswerLikertViewSet(BaseAPIViewSet):
+    ordering = ["assessment", "question"]
+    serializer_class = SurveyAnswerLikertSerializer
+    filter_class = SurveyAnswerLikertFilterSet
+    search_fields = ["assessment__name", "question__key", "question__attribute__name"]
+    permission_classes = [CollaboratorReadOnlyOrAuthenticatedUserPermission]
+
+    def get_queryset(self):
+        return get_assessment_related_queryset(self.request.user, SurveyAnswerLikert)

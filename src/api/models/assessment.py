@@ -446,19 +446,41 @@ class Assessment(BaseModel):
         if self.status == self.PUBLISHED:
             nullfields = []
             for field in self._meta.get_fields():
-                value = getattr(self, field.name)
-                if (
-                    value is None
-                    and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS
-                ):
-                    nullfields.append(field.name)
+                if not field.is_relation:
+                    value = getattr(self, field.name)
+                    if (
+                        value is None
+                        and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS
+                    ):
+                        nullfields.append(field.name)
             if nullfields:
                 raise ValidationError(
                     {f: _("May not be published unanswered") for f in nullfields}
                 )
 
+            required_questions = SurveyQuestionLikert.objects.filter(
+                attribute__required=True
+            )
+            answered_question_ids = self.surveyanswerlikert_set.values_list(
+                "question", flat=True
+            )
+            answered_questions = SurveyQuestionLikert.objects.filter(
+                pk__in=answered_question_ids
+            )
+            missing_questions = required_questions.difference(answered_questions)
+            if missing_questions:
+                questions_string = ",".join([q.key for q in missing_questions])
+                raise ValidationError(
+                    f"May not be published without answers to these questions: {questions_string}"
+                )
+
     def save(self, *args, **kwargs):
         self.full_clean()
+        if self.status == self.PUBLISHED:
+            latest_version = AssessmentVersion.objects.order_by(
+                "-year", "-major_version"
+            ).first()
+            self.published_version = latest_version
         super().save(*args, **kwargs)
 
     class Meta:
@@ -559,7 +581,6 @@ class SurveyQuestion(BaseModel):
 
     class Meta:
         abstract = True
-        ordering = ["number"]
 
     def __str__(self):
         return f"{self.key}"
@@ -573,6 +594,7 @@ class SurveyQuestionLikert(SurveyQuestion):
     excellent_50 = models.TextField()
 
     class Meta:
+        ordering = ["number"]
         verbose_name = "Likert survey question"
 
 
@@ -583,7 +605,6 @@ class SurveyAnswer(BaseModel):
 
     class Meta:
         abstract = True
-        unique_together = ("assessment", "question")
 
 
 class SurveyAnswerLikert(SurveyAnswer):
@@ -596,6 +617,7 @@ class SurveyAnswerLikert(SurveyAnswer):
     explanation = models.TextField(blank=True)
 
     class Meta:
+        unique_together = ("assessment", "question")
         verbose_name = "Likert survey answer"
 
     def __str__(self):
