@@ -1,6 +1,7 @@
 from django.conf import settings
 from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
+from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
 from .base import (
     LIKERT_CHOICES,
@@ -15,7 +16,45 @@ from .management import ManagementArea
 class Assessment(BaseModel):
     assessment_lookup = ""
 
-    ALLOWED_PUBLISHED_NULLFIELDS = ("created_by", "updated_by")
+    ALLOWED_PUBLISHED_NULLFIELDS = (
+        "created_by",
+        "updated_by",
+        "stakeholder_harvest_rights",
+        "stakeholder_develop_rules",
+        "stakeholder_exclude_others",
+        "vulnerable_defined_rights",
+        "legislation_exists",
+        "rights_governance",
+        "exercise_rights",
+        "benefits_shared",
+        "stakeholder_agency",
+        "governance_accountable",
+        "timely_information",
+        "penalties_fair",
+        "penalties_frequency",
+        "multiple_knowledge_social",
+        "conflict_resolution_access",
+        "management_levels_cohesive",
+        "supportive_networks",
+        "regulations_exist",
+        "management_capacity",
+        "boundary_known",
+        "boundary_defined",
+        "management_plan",
+        "outcomes_achieved_ecological",
+        "outcomes_achieved_social",
+        "multiple_knowledge_integrated",
+        "ecological_monitoring_used",
+        "social_monitoring_used",
+        "sufficient_staff",
+        "staff_capacity",
+        "sufficient_budget",
+        "budget_secure",
+        "sufficient_equipment",
+        "climatechange_incorporated",
+        "climatechange_managed",
+        "climatechange_monitored",
+    )
 
     OPEN = 90
     TEST = 80
@@ -75,7 +114,7 @@ class Assessment(BaseModel):
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
     )
-    attributes = models.ManyToManyField(Attribute)
+    attributes = models.ManyToManyField(Attribute, blank=True)
     person_responsible = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.PROTECT,
@@ -441,9 +480,11 @@ class Assessment(BaseModel):
     )
     climatechange_monitored_text = models.TextField(blank=True)
 
-    # Disallow publishing if any fields are null. Does not check non-nullable fields with default values.
     def clean(self):
+        # Publishing checks
         if self.status == self.PUBLISHED:
+            #  Disallow publishing if any fields on the model itself are null.
+            #  Does not check non-nullable fields with default values or char/text fields with empty strings.
             nullfields = []
             for field in self._meta.get_fields():
                 if not field.is_relation:
@@ -458,8 +499,15 @@ class Assessment(BaseModel):
                     {f: _("May not be published unanswered") for f in nullfields}
                 )
 
+            # Ensure at least one attribute is associated with assessment
+            attributes = self.attributes.all()
+            if attributes.count() < 1:
+                raise ValidationError("May not be published without at least one associated attribute")
+
+            # Ensure all questions for attributes associated with assessment are answered
+            #  Doublecheck required attributes even though they are automatically added by admin and viewset
             required_questions = SurveyQuestionLikert.objects.filter(
-                attribute__required=True
+                Q(attribute__in=attributes) | Q(attribute__required=True)
             )
             answered_question_ids = self.surveyanswerlikert_set.values_list(
                 "question", flat=True
