@@ -502,7 +502,9 @@ class Assessment(BaseModel):
             # Ensure at least one attribute is associated with assessment
             attributes = self.attributes.all()
             if attributes.count() < 1:
-                raise ValidationError("May not be published without at least one associated attribute")
+                raise ValidationError(
+                    "May not be published without at least one associated attribute"
+                )
 
             # Ensure all questions for attributes associated with assessment are answered
             #  Doublecheck required attributes even though they are automatically added by admin and viewset
