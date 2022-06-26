@@ -193,12 +193,19 @@ class CountryListFilter(admin.SimpleListFilter):
 
 @admin.register(AssessmentVersion)
 class AssessmentVersionAdmin(BaseAdmin):
-    list_display = ["year", "major_version", "updated_on"]
+    list_display = ["year", "major_version", "updated_on"] + BaseAdmin.list_display
 
 
 @admin.register(Attribute)
 class AttributeAdmin(BaseChoiceAdmin):
     list_display = ["name", "required"]
+
+
+@admin.register(Document)
+class DocumentAdmin(BaseAdmin):
+    list_display = ["name", "version", "publication_date"] + BaseAdmin.list_display
+    list_filter = ("version",)
+    ordering = ["-version", "name"]
 
 
 @admin.register(GovernanceType)

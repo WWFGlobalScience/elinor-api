@@ -45,9 +45,7 @@ class BaseChoiceModel(BaseModel):
 
     class Meta:
         abstract = True
-        ordering = [
-            "name",
-        ]
+        ordering = ["name"]
 
     def __str__(self):
         return self.name
@@ -120,3 +118,17 @@ class AssessmentVersion(BaseModel):
 
 class Attribute(BaseChoiceModel):
     required = models.BooleanField(default=False)
+
+
+class Document(BaseModel):
+    name = models.CharField(max_length=255)
+    version = models.ForeignKey(AssessmentVersion, on_delete=models.PROTECT)
+    publication_date = models.DateField()
+    file = models.FileField(upload_to="upload")
+    description = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-version__year", "-version__major_version", "name"]
+
+    def __str__(self):
+        return f"{self.version} {self.name}"

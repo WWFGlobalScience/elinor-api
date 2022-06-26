@@ -5,6 +5,7 @@ from django_countries.serializers import CountryFieldMixin
 from django_filters import (
     CharFilter,
     ChoiceFilter,
+    DateFromToRangeFilter,
     DateTimeFromToRangeFilter,
     FilterSet,
     ModelChoiceFilter,
@@ -22,6 +23,7 @@ from rest_framework.response import Response
 from ..models import (
     AssessmentVersion,
     Attribute,
+    Document,
     GovernanceType,
     ManagementAuthority,
     Organization,
@@ -275,6 +277,29 @@ class AttributeViewSet(BaseChoiceViewSet):
     queryset = Attribute.objects.all()
     serializer_class = AttributeSerializer
     filter_class = AttributeFilterSet
+    permission_classes = [ReadOnly]
+
+
+class DocumentSerializer(BaseAPISerializer):
+    version = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Document
+        exclude = []
+
+
+class DocumentFilterSet(BaseAPIFilterSet):
+    publication_date = DateFromToRangeFilter()
+
+    class Meta:
+        model = Document
+        exclude = ["file"]
+
+
+class DocumentViewSet(BaseAPIViewSet):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    filter_class = DocumentFilterSet
     permission_classes = [ReadOnly]
 
 
