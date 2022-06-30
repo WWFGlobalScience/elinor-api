@@ -1,6 +1,7 @@
 from .base import (
     AssessmentVersion,
     Attribute,
+    Document,
     GovernanceType,
     ManagementAuthority,
     Organization,

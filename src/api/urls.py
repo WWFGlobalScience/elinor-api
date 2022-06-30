@@ -3,6 +3,7 @@ from .resources.base import (
     ElinorDefaultRouter,
     assessmentversion,
     AttributeViewSet,
+    DocumentViewSet,
     GovernanceTypeViewSet,
     ManagementAuthorityViewSet,
     OrganizationViewSet,
@@ -31,6 +32,7 @@ router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"attributes", AttributeViewSet, "attribute")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")
 router.register(r"collaborators", CollaboratorViewSet, "collaborator")
+router.register(r"documents", DocumentViewSet, "document")
 router.register(r"governancetypes", GovernanceTypeViewSet, "governancetype")
 router.register(r"managementareas", ManagementAreaViewSet, "managementarea")
 router.register(r"managementareazones", ManagementAreaZoneViewSet, "managementareazone")
