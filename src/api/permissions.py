@@ -52,6 +52,8 @@ class ReadOnlyOrAuthenticatedCreate(permissions.BasePermission):
 
 
 class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission):
+    PUBLISHED_MODIFIABLE_FIELDS = ["data_policy"]
+
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
             return True
@@ -68,7 +70,17 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
         if assessment:
             collaborator = get_collaborator(assessment, user)
             if collaborator.is_admin:
-                return not assessment.is_published
+                if not assessment.is_published:
+                    return True
+                elif request.method in ("PUT", "PATCH"):
+                    partial = request.method == "PATCH"
+                    serializer = view.get_serializer(
+                        obj, data=request.data, partial=partial
+                    )
+                    serializer.is_valid(raise_exception=True)
+                    return set(serializer.validated_data.keys()).issubset(
+                        self.PUBLISHED_MODIFIABLE_FIELDS
+                    )
             elif collaborator.is_collector:
                 return not assessment.is_published and request.method in (
                     "PUT",

@@ -119,4 +119,4 @@ class AssessmentVersion(BaseModel):
 
 
 class Attribute(BaseChoiceModel):
-    required = models.BooleanField(default=True)
+    required = models.BooleanField(default=False)
