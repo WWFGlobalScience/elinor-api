@@ -118,6 +118,8 @@ class AssessmentVersion(BaseModel):
 
 class Attribute(BaseChoiceModel):
     required = models.BooleanField(default=False)
+    order = models.PositiveSmallIntegerField()
+    description = models.TextField(blank=True)
 
 
 class Document(BaseModel):

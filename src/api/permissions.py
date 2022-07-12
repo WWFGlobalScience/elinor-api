@@ -106,7 +106,7 @@ class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermissi
                         {"assessment": "Missing assessment id"}
                     )
                 user_collaborator = get_collaborator(assessment, user)
-                return not assessment.is_published and user_collaborator.is_admin
+                return not assessment.is_finalized and user_collaborator.is_admin
             return True  # PUT/PATCH/DELETE handled with object permissions
 
         return False
@@ -117,6 +117,6 @@ class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermissi
             if user.is_superuser:
                 return True
             user_collaborator = get_collaborator(obj.assessment, user)
-            return not obj.assessment.is_published and user_collaborator.is_admin
+            return not obj.assessment.is_finalized and user_collaborator.is_admin
 
         return False

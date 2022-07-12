@@ -40,7 +40,7 @@ def get_assessment_related_queryset(user, model):
     if lookup != "":
         lookup = f"{lookup}__"
     qs = model.objects.all()
-    qry = Q(**{f"{lookup}status__lte": Assessment.PUBLISHED}) & Q(
+    qry = Q(**{f"{lookup}status__lte": Assessment.FINALIZED}) & Q(
         **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
     )
     if user.is_authenticated:
@@ -60,7 +60,7 @@ class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
 class AssessmentMASerializer(CountryFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = ManagementArea
-        fields = ["id", "countries"]
+        fields = ["id", "name", "countries"]
 
 
 class AssessmentSerializer(BaseAPISerializer):
@@ -79,6 +79,7 @@ class AssessmentSerializer(BaseAPISerializer):
     management_area_countries = AssessmentMASerializer(
         read_only=True, source="management_area"
     )
+    percent_complete = serializers.ReadOnlyField()
     published_version = serializers.StringRelatedField(read_only=True)
 
     # def validate(self, data):

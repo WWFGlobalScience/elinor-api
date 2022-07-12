@@ -198,7 +198,7 @@ class AssessmentVersionAdmin(BaseAdmin):
 
 @admin.register(Attribute)
 class AttributeAdmin(BaseChoiceAdmin):
-    list_display = ["name", "required"]
+    list_display = ["name", "order", "required"]
 
 
 @admin.register(Document)

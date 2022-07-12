@@ -77,7 +77,7 @@ class CollaboratorAdmin(BaseAdmin):
 
 @admin.register(SurveyQuestionLikert)
 class SurveyQuestionLikertAdmin(BaseAdmin):
-    list_display = ["key", "number", "attribute"] + BaseAdmin.list_display
+    list_display = ["key", "attribute", "number"] + BaseAdmin.list_display
 
 
 @admin.register(SurveyAnswerLikert)
