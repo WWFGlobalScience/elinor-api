@@ -53,6 +53,7 @@ INSTALLED_APPS = [
     "tools",
     "django_countries",
     "corsheaders",
+    "drf_recaptcha",
     # authentication
     "rest_framework.authtoken",
     "dj_rest_auth",
@@ -180,7 +181,8 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
-DEFAULT_FROM_EMAIL = "Elinor API <{}>".format(EMAIL_HOST_USER)
+DEFAULT_FROM_EMAIL = "Elinor <{}>".format(EMAIL_HOST_USER)
+EMAIL_CONTACT = os.environ.get("EMAIL_CONTACT")
 CORS_ORIGIN_ALLOW_ALL = True
 
 LOGGING = {
@@ -224,3 +226,6 @@ REST_AUTH_REGISTER_SERIALIZERS = {
 #     # Needed to login by username in Django admin, regardless of allauth
 #     'django.contrib.auth.backends.ModelBackend',
 # ]
+
+DRF_RECAPTCHA_SECRET_KEY = os.environ.get("DRF_RECAPTCHA_SECRET_KEY")
+# DRF_RECAPTCHA_TESTING = True

@@ -13,6 +13,7 @@ from .resources.base import (
     SupportSourceViewSet,
     UserViewSet,
 )
+from .resources.contact import contact_elinor_admins
 from .resources.management import (
     ManagementAreaViewSet,
     ManagementAreaZoneViewSet,
@@ -52,4 +53,5 @@ router.register(r"users", UserViewSet, "user")
 
 api_urls = router.urls + [
     path("assessmentversion", assessmentversion, name="assessmentversion"),
+    path("contactelinoradmins", contact_elinor_admins, name="contactelinoradmin"),
 ]

@@ -1,0 +1,10 @@
+{% extends "emails/base.html" %}
+{% block title %}Contact email from site user{% endblock %}
+{% block body %}
+    <p>
+    {{ message }}
+    </p>
+    <p>The user who sent the email is:
+        <a href="mailto:{{ from_email }}">{{ name }} <{{ from_email }}></a>
+    </p>
+{% endblock %}
