@@ -56,10 +56,10 @@ class Assessment(BaseModel):
         "climatechange_monitored",
     )
 
-    OPEN = 90
+    NOT_FINALIZED = 90
     TEST = 80
-    PUBLISHED = 10
-    STATUSES = ((OPEN, _("open")), (TEST, _("test")), (PUBLISHED, _("published")))
+    FINALIZED = 10
+    STATUSES = ((NOT_FINALIZED, _("not finalized")), (TEST, _("test")), (FINALIZED, _("finalized")))
 
     PRIVATE = 10
     PUBLIC = 90
@@ -110,7 +110,7 @@ class Assessment(BaseModel):
     organization = models.ForeignKey(
         Organization, on_delete=models.SET_NULL, blank=True, null=True
     )
-    status = models.PositiveSmallIntegerField(choices=STATUSES, default=OPEN)
+    status = models.PositiveSmallIntegerField(choices=STATUSES, default=NOT_FINALIZED)
     data_policy = models.PositiveSmallIntegerField(
         choices=DATA_POLICIES, default=PUBLIC
     )
@@ -480,9 +480,31 @@ class Assessment(BaseModel):
     )
     climatechange_monitored_text = models.TextField(blank=True)
 
+    @property
+    def required_questions(self):
+        if hasattr(self, "_required_questions"):
+            return self._required_questions
+
+        self._required_questions = SurveyQuestionLikert.objects.filter(
+            Q(attribute__in=self.attributes.all()) | Q(attribute__required=True)
+        )
+        return self._required_questions
+
+    @property
+    def percent_complete(self):
+        if hasattr(self, "_percent_complete"):
+            return self._percent_complete
+
+        answered = self.surveyanswerlikert_set.all().count()
+        total = self.required_questions.count()
+        if total < 1:
+            total = 1
+        self._percent_complete = round(100 * (answered / total))
+        return self._percent_complete
+
     def clean(self):
         # Publishing checks
-        if self.status == self.PUBLISHED:
+        if self.status == self.FINALIZED:
             #  Disallow publishing if any fields on the model itself are null.
             #  Does not check non-nullable fields with default values or char/text fields with empty strings.
             nullfields = []
@@ -508,16 +530,13 @@ class Assessment(BaseModel):
 
             # Ensure all questions for attributes associated with assessment are answered
             #  Doublecheck required attributes even though they are automatically added by admin and viewset
-            required_questions = SurveyQuestionLikert.objects.filter(
-                Q(attribute__in=attributes) | Q(attribute__required=True)
-            )
             answered_question_ids = self.surveyanswerlikert_set.values_list(
                 "question", flat=True
             )
             answered_questions = SurveyQuestionLikert.objects.filter(
                 pk__in=answered_question_ids
             )
-            missing_questions = required_questions.difference(answered_questions)
+            missing_questions = self.required_questions.difference(answered_questions)
             if missing_questions:
                 questions_string = ",".join([q.key for q in missing_questions])
                 raise ValidationError(
@@ -526,7 +545,7 @@ class Assessment(BaseModel):
 
     def save(self, *args, **kwargs):
         self.full_clean()
-        if self.status == self.PUBLISHED:
+        if self.status == self.FINALIZED:
             latest_version = AssessmentVersion.objects.order_by(
                 "-year", "-major_version"
             ).first()
@@ -538,8 +557,8 @@ class Assessment(BaseModel):
         ordering = ["name", "year"]
 
     @property
-    def is_published(self):
-        return self.status <= self.PUBLISHED
+    def is_finalized(self):
+        return self.status <= self.FINALIZED
 
     def __str__(self):
         return f"{self.name} {self.organization} {self.year}"
@@ -623,7 +642,7 @@ class SurveyQuestion(BaseModel):
     key = models.CharField(
         max_length=255, unique=True
     )  # migration: populate with current field name
-    number = models.PositiveSmallIntegerField(unique=True)
+    number = models.PositiveSmallIntegerField()
     text = models.TextField()  # migration: populate with current verbose_name
     rationale = models.TextField()
     information = models.TextField()
@@ -644,7 +663,7 @@ class SurveyQuestionLikert(SurveyQuestion):
     excellent_50 = models.TextField()
 
     class Meta:
-        ordering = ["number"]
+        ordering = ["attribute", "number"]
         verbose_name = "Likert survey question"
 
 
