@@ -59,7 +59,11 @@ class Assessment(BaseModel):
     NOT_FINALIZED = 90
     TEST = 80
     FINALIZED = 10
-    STATUSES = ((NOT_FINALIZED, _("not finalized")), (TEST, _("test")), (FINALIZED, _("finalized")))
+    STATUSES = (
+        (NOT_FINALIZED, _("not finalized")),
+        (TEST, _("test")),
+        (FINALIZED, _("finalized")),
+    )
 
     PRIVATE = 10
     PUBLIC = 90
@@ -495,7 +499,10 @@ class Assessment(BaseModel):
         if hasattr(self, "_percent_complete"):
             return self._percent_complete
 
-        answered = self.surveyanswerlikert_set.all().count()
+        answered = self.surveyanswerlikert_set.filter(
+            Q(question__attribute__in=self.attributes.all())
+            | Q(question__attribute__required=True)
+        ).count()
         total = self.required_questions.count()
         if total < 1:
             total = 1
