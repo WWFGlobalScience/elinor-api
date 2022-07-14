@@ -118,7 +118,7 @@ class AssessmentVersion(BaseModel):
 
 class Attribute(BaseChoiceModel):
     required = models.BooleanField(default=False)
-    order = models.PositiveSmallIntegerField()
+    order = models.PositiveSmallIntegerField(unique=True)
     description = models.TextField(blank=True)
 
 
