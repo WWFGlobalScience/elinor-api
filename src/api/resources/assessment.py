@@ -60,7 +60,18 @@ class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
 class AssessmentMASerializer(CountryFieldMixin, serializers.ModelSerializer):
     class Meta:
         model = ManagementArea
-        fields = ["id", "name", "countries"]
+        fields = [
+            "id",
+            "name",
+            "countries",
+            "regions",
+            "date_established",
+            "recognition_level",
+            "governance_type",
+            "objectives",
+            "management_authority",
+            "support_sources",
+        ]
 
 
 class AssessmentSerializer(BaseAPISerializer):
