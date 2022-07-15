@@ -5,15 +5,25 @@ from django_countries.serializers import CountryFieldMixin
 from django_filters import (
     CharFilter,
     ChoiceFilter,
+    DateFromToRangeFilter,
     DateTimeFromToRangeFilter,
     FilterSet,
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
 from rest_framework import permissions, routers, serializers, viewsets
+from rest_framework.decorators import (
+    api_view,
+    authentication_classes,
+    permission_classes,
+)
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.response import Response
 from ..models import (
+    AssessmentVersion,
+    Attribute,
+    Document,
     GovernanceType,
     ManagementAuthority,
     Organization,
@@ -22,7 +32,11 @@ from ..models import (
     StakeholderGroup,
     SupportSource,
 )
-from ..permissions import AuthenticatedAndReadOnly, ReadOnlyOrAuthenticatedCreate
+from ..permissions import (
+    AuthenticatedAndReadOnly,
+    ReadOnly,
+    ReadOnlyOrAuthenticatedCreate,
+)
 
 
 User = get_user_model()
@@ -237,15 +251,56 @@ class UserViewSet(BaseAPIViewSet):
     search_fields = ["username", "first_name", "last_name"]
 
 
-class OrganizationSerializer(BaseAPISerializer):
+@api_view(permissions.SAFE_METHODS)
+@authentication_classes([])
+@permission_classes((ReadOnly,))
+def assessmentversion(request):
+    current_version = AssessmentVersion.objects.order_by(
+        "-year", "-major_version"
+    ).first()
+    return Response(str(current_version))
+
+
+class AttributeSerializer(BaseAPISerializer):
     class Meta:
-        model = Organization
+        model = Attribute
         exclude = []
 
 
-class OrganizationViewSet(BaseChoiceViewSet):
-    queryset = Organization.objects.all()
-    serializer_class = OrganizationSerializer
+class AttributeFilterSet(BaseAPIFilterSet):
+    class Meta:
+        model = Attribute
+        exclude = []
+
+
+class AttributeViewSet(BaseChoiceViewSet):
+    queryset = Attribute.objects.all()
+    serializer_class = AttributeSerializer
+    filter_class = AttributeFilterSet
+    permission_classes = [ReadOnly]
+
+
+class DocumentSerializer(BaseAPISerializer):
+    version = serializers.StringRelatedField(read_only=True)
+
+    class Meta:
+        model = Document
+        exclude = []
+
+
+class DocumentFilterSet(BaseAPIFilterSet):
+    publication_date = DateFromToRangeFilter()
+
+    class Meta:
+        model = Document
+        exclude = ["file"]
+
+
+class DocumentViewSet(BaseAPIViewSet):
+    queryset = Document.objects.all()
+    serializer_class = DocumentSerializer
+    filter_class = DocumentFilterSet
+    permission_classes = [ReadOnly]
 
 
 class GovernanceTypeSerializer(BaseAPISerializer):
@@ -270,13 +325,18 @@ class ManagementAuthorityViewSet(BaseChoiceViewSet):
     serializer_class = ManagementAuthoritySerializer
 
 
-class ProtectedAreaSerializer(BaseAPISerializer):
+class OrganizationSerializer(BaseAPISerializer):
     class Meta:
-        model = ProtectedArea
+        model = Organization
         exclude = []
 
 
-class ProtectedAreaFilterSet(ChoiceFilterSet):
+class OrganizationViewSet(BaseChoiceViewSet):
+    queryset = Organization.objects.all()
+    serializer_class = OrganizationSerializer
+
+
+class ProtectedAreaSerializer(BaseAPISerializer):
     class Meta:
         model = ProtectedArea
         exclude = []
@@ -285,7 +345,7 @@ class ProtectedAreaFilterSet(ChoiceFilterSet):
 class ProtectedAreaViewSet(BaseChoiceViewSet):
     queryset = ProtectedArea.objects.all()
     serializer_class = ProtectedAreaSerializer
-    filter_class = ProtectedAreaFilterSet
+    filter_class = ChoiceFilterSet
 
 
 class RegionSerializer(CountryFieldMixin, BaseAPISerializer):

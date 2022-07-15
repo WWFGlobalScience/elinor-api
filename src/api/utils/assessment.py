@@ -1,4 +1,4 @@
-from ..models import Assessment, AssessmentChange
+from ..models import Assessment, AssessmentChange, Attribute
 
 
 def _log_assessment_change(
@@ -20,8 +20,8 @@ def log_assessment_change(original_assessment, updated_assessment, user):
         or original_assessment.data_policy != updated_assessment.data_policy
     ):
         status_changes = {
-            Assessment.PUBLISHED: AssessmentChange.SUBMIT,
-            Assessment.OPEN: AssessmentChange.UNSUBMIT,
+            Assessment.FINALIZED: AssessmentChange.SUBMIT,
+            Assessment.NOT_FINALIZED: AssessmentChange.UNSUBMIT,
         }
         _log_assessment_change(
             original_assessment, updated_assessment, "status", status_changes, user
@@ -46,3 +46,10 @@ def log_assessment_change(original_assessment, updated_assessment, user):
     #         user=user,
     #         event_type=AssessmentChange.EDIT
     #     )
+
+
+def enforce_required_attributes(assessment):
+    required_attributes = Attribute.objects.filter(required=True)
+    missing_required = required_attributes.difference(assessment.attributes.all())
+    if missing_required:
+        assessment.attributes.add(*missing_required)

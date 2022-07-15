@@ -132,11 +132,6 @@ class BaseChoiceAdmin(admin.ModelAdmin):
     actions = (export_model_display_as_csv, export_model_all_as_csv)
 
 
-@admin.register(Organization)
-class OrganizationAdmin(BaseChoiceAdmin):
-    pass
-
-
 admin.site.unregister(UserModel)
 
 
@@ -191,9 +186,26 @@ class CountryListFilter(admin.SimpleListFilter):
         if self.value():
             if _field.multiple:
                 return queryset.filter(country__icontains=self.value())
-            return queryset.filter(country=self.value())
+            return queryset.filter(country__iname=self.value())
         else:
             return queryset
+
+
+@admin.register(AssessmentVersion)
+class AssessmentVersionAdmin(BaseAdmin):
+    list_display = ["year", "major_version", "updated_on"] + BaseAdmin.list_display
+
+
+@admin.register(Attribute)
+class AttributeAdmin(BaseChoiceAdmin):
+    list_display = ["name", "order", "required"]
+
+
+@admin.register(Document)
+class DocumentAdmin(BaseAdmin):
+    list_display = ["name", "version", "publication_date"] + BaseAdmin.list_display
+    list_filter = ("version",)
+    ordering = ["-version", "name"]
 
 
 @admin.register(GovernanceType)
@@ -203,6 +215,11 @@ class GovernanceTypeAdmin(BaseChoiceAdmin):
 
 @admin.register(ManagementAuthority)
 class ManagementAuthorityAdmin(BaseChoiceAdmin):
+    pass
+
+
+@admin.register(Organization)
+class OrganizationAdmin(BaseChoiceAdmin):
     pass
 
 

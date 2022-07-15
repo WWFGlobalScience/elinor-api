@@ -7,7 +7,7 @@ from allauth.account.utils import (
     user_pk_to_url_str,
     user_username,
 )
-from dj_rest_auth.forms import PasswordResetForm
+from dj_rest_auth.forms import AllAuthPasswordResetForm
 from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import PasswordResetSerializer
 from django.conf import settings
@@ -84,7 +84,7 @@ class NewEmailConfirmation(APIView):
                 )
 
 
-class FrontendURLPasswordResetForm(PasswordResetForm):
+class FrontendURLPasswordResetForm(AllAuthPasswordResetForm):
     def save(self, request, **kwargs):
         current_site = get_current_site(request)
         email = self.cleaned_data["email"]

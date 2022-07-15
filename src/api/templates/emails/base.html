@@ -1,0 +1,14 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <title>{% block title %}Elinor system email{% endblock %}</title>
+  </head>
+  <body width="100%" bgcolor="#EDF3FD" style="margin: 0">
+    {% block body %}{% endblock %}
+    <br /><br />
+    Sent by <a href="https://elinordata.org">Elinor</a> on {{timestamp}} UTC
+  </body>
+</html>

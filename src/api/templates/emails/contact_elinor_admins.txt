@@ -1,0 +1,9 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+Contact email from site user
+
+{{ message }}
+
+The user who sent the email is:
+{{ name }} <{{ from_email }}>
+{% endblock %}
