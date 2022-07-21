@@ -316,7 +316,7 @@ class SurveyAnswerLikertViewSet(BaseAPIViewSet):
     serializer_class = SurveyAnswerLikertSerializer
     filter_class = SurveyAnswerLikertFilterSet
     search_fields = ["assessment__name", "question__key", "question__attribute__name"]
-    permission_classes = [CollaboratorReadOnlyOrAuthenticatedUserPermission]
+    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
     def get_queryset(self):
         return get_assessment_related_queryset(self.request.user, SurveyAnswerLikert)
