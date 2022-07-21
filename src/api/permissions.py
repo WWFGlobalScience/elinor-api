@@ -70,7 +70,7 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
         if assessment:
             collaborator = get_collaborator(assessment, user)
             if collaborator.is_admin:
-                if not assessment.is_published:
+                if not assessment.is_finalized:
                     return True
                 elif request.method in ("PUT", "PATCH"):
                     partial = request.method == "PATCH"
@@ -82,7 +82,7 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
                         self.PUBLISHED_MODIFIABLE_FIELDS
                     )
             elif collaborator.is_collector:
-                return not assessment.is_published and request.method in (
+                return not assessment.is_finalized and request.method in (
                     "PUT",
                     "PATCH",
                 )
