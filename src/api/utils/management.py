@@ -130,10 +130,12 @@ def get_multipolygon_from_shp(field, shapefiledir):
         crs_label = ""
         if shp.srs["PROJCS"] is not None:
             crs_label = shp.srs["PROJCS"]
-        elif shp.srs['GEOGCS'] is not None:
-            crs_label = shp.srs['GEOGCS']
-        if shp.srs['AUTHORITY'] is not None:
-            crs_label = f"{crs_label} ({shp.srs['AUTHORITY']} {shp.srs['AUTHORITY', 1]})"
+        elif shp.srs["GEOGCS"] is not None:
+            crs_label = shp.srs["GEOGCS"]
+        if shp.srs["AUTHORITY"] is not None:
+            crs_label = (
+                f"{crs_label} ({shp.srs['AUTHORITY']} {shp.srs['AUTHORITY', 1]})"
+            )
         raise ValidationError({field: f"Unsupported shapefile CRS: {crs_label}"})
 
     if shp.geom_type not in ACCEPTED_GEOMETRIES:

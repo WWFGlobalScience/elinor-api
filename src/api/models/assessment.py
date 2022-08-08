@@ -163,7 +163,7 @@ class Assessment(BaseModel):
             #  Does not check non-nullable fields with default values or char/text fields with empty strings.
             nullfields = []
             for field in self._meta.get_fields():
-                if not field.is_relation:
+                if not field.is_relation or field.one_to_one:
                     value = getattr(self, field.name)
                     if (
                         value is None
