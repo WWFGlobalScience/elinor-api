@@ -1,0 +1,15 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+Assessment Admin:
+
+Please note that your assessment {{ assessmentflag.assessment.name }} has been flagged by {{ assessmentflag.reporter.username }} for the following reason:
+{{ assessmentflag.flag_type }}
+
+With the following comments:
+{{ assessmentflag.explanation }}
+
+An Elinor admin will hide the assessment and get in touch with you to resolve the issue.
+If you can address the issue yourself, please go ahead and resolve using the link below, then contact Elinor admins at {{ elinor_contact }}.
+
+Thank you
+{% endblock %}

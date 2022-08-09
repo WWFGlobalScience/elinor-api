@@ -4,6 +4,18 @@ from ..models.assessment import *
 from ..utils.assessment import enforce_required_attributes, log_assessment_change
 
 
+class SurveyAnswerLikertInline(admin.TabularInline):
+    model = SurveyAnswerLikert
+    exclude = ("created_by", "updated_by")
+    extra = 0
+
+
+class AssessmentFlagInline(admin.TabularInline):
+    model = AssessmentFlag
+    exclude = ("created_by", "updated_by")
+    extra = 0
+
+
 class AssessmentChangeInline(admin.TabularInline):
     model = AssessmentChange
     exclude = ("created_by", "updated_by")
@@ -18,12 +30,6 @@ class AssessmentChangeInline(admin.TabularInline):
 
     def has_delete_permission(self, request, obj=None):
         return False
-
-
-class SurveyAnswerLikertInline(admin.TabularInline):
-    model = SurveyAnswerLikert
-    exclude = ("created_by", "updated_by")
-    extra = 0
 
 
 @admin.register(Assessment)
@@ -41,7 +47,7 @@ class AssessmentAdmin(BaseAdmin):
         "organization__name",
     ]
     list_filter = ["status", "data_policy", "year", "management_area"]
-    inlines = [SurveyAnswerLikertInline, AssessmentChangeInline]
+    inlines = [SurveyAnswerLikertInline, AssessmentFlagInline, AssessmentChangeInline]
 
     def save_model(self, request, obj, form, change):
         if change:
@@ -73,6 +79,39 @@ class CollaboratorAdmin(BaseAdmin):
     @admin.display(description="collaborator", ordering="assessment__name")
     def selfstr(self, obj):
         return obj.__str__()
+
+
+@admin.register(AssessmentFlag)
+class AssessmentFlagAdmin(BaseAdmin):
+    list_display = [
+        "selfstr",
+        "flag_type_integrated",
+        "created_on",
+        "datetime_resolved",
+        "reportername",
+    ]
+    search_fields = [
+        "assessment__name",
+        "reporter__username",
+        "reporter__first_name",
+        "reporter__last_name",
+        "reporter__email",
+    ]
+    list_filter = ["flag_type"]
+
+    @admin.display(description="flag", ordering="assessment__name")
+    def selfstr(self, obj):
+        return obj.__str__()
+
+    @admin.display(description="reporter", ordering="reporter__username")
+    def reportername(self, obj):
+        return obj.reporter.username
+
+    @admin.display(description="type", ordering="flag_type")
+    def flag_type_integrated(self, obj):
+        if obj.flag_type_other != "":
+            return obj.flag_type_other
+        return obj.flag_type
 
 
 @admin.register(SurveyQuestionLikert)

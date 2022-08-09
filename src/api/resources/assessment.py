@@ -20,7 +20,7 @@ from .base import (
 from ..models import (
     Assessment,
     AssessmentChange,
-    Attribute,
+    AssessmentFlag,
     Collaborator,
     ManagementArea,
     Organization,
@@ -29,6 +29,7 @@ from ..models import (
 )
 from ..permissions import (
     ReadOnly,
+    ReadOnlyOrAuthenticatedCreate,
     AssessmentReadOnlyOrAuthenticatedUserPermission,
     CollaboratorReadOnlyOrAuthenticatedUserPermission,
 )
@@ -74,6 +75,12 @@ class AssessmentMASerializer(CountryFieldMixin, serializers.ModelSerializer):
         ]
 
 
+class AssessmentFlagListSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AssessmentFlag
+        exclude = []
+
+
 class AssessmentSerializer(BaseAPISerializer):
     person_responsible = PrimaryKeyExpandedField(
         queryset=user_choice_qs,
@@ -85,6 +92,9 @@ class AssessmentSerializer(BaseAPISerializer):
         allow_null=True,
         required=False,
         serializer=ReadOnlyChoiceSerializer,
+    )
+    flags = AssessmentFlagListSerializer(
+        many=True, read_only=True, source="assessment_flags"
     )
     collaborators = AssessmentCollaboratorSerializer(many=True, read_only=True)
     management_area_countries = AssessmentMASerializer(
@@ -134,12 +144,12 @@ class AssessmentViewSet(BaseAPIViewSet):
     serializer_class = AssessmentSerializer
     filter_class = AssessmentFilterSet
     search_fields = ["name", "management_area__name"]
-    permission_classes = [
-        AssessmentReadOnlyOrAuthenticatedUserPermission,
-    ]
+    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
     def get_queryset(self):
-        return get_assessment_related_queryset(self.request.user, Assessment)
+        return get_assessment_related_queryset(
+            self.request.user, Assessment
+        ).prefetch_related("assessment_flags")
 
     def perform_create(self, serializer):
         user = self.request.user
@@ -186,12 +196,30 @@ class AssessmentChangeViewSet(BaseAPIViewSet):
     serializer_class = AssessmentChangeSerializer
     filter_class = AssessmentChangeFilterSet
     search_fields = ["assessment_name", "user__username"]
-    permission_classes = [
-        ReadOnly,
-    ]
+    permission_classes = [ReadOnly]
 
     def get_queryset(self):
         return get_assessment_related_queryset(self.request.user, AssessmentChange)
+
+
+class AssessmentFlagSerializer(BaseAPISerializer):
+    class Meta:
+        model = AssessmentFlag
+        exclude = []
+
+
+class AssessmentFlagFilterSet(BaseAPIFilterSet):
+    class Meta:
+        model = AssessmentFlag
+        exclude = []
+
+
+class AssessmentFlagViewSet(BaseAPIViewSet):
+    queryset = AssessmentFlag.objects.all()
+    serializer_class = AssessmentFlagSerializer
+    filter_class = AssessmentFlagFilterSet
+    search_fields = ["assessment_name", "reporter__username"]
+    permission_classes = [ReadOnlyOrAuthenticatedCreate]
 
 
 class CollaboratorSerializer(BaseAPISerializer):
@@ -223,9 +251,7 @@ class CollaboratorViewSet(BaseAPIViewSet):
     serializer_class = CollaboratorSerializer
     filter_class = CollaboratorFilterSet
     search_fields = ["assessment__name", "user__username"]
-    permission_classes = [
-        CollaboratorReadOnlyOrAuthenticatedUserPermission,
-    ]
+    permission_classes = [CollaboratorReadOnlyOrAuthenticatedUserPermission]
 
     def get_queryset(self):
         return get_assessment_related_queryset(self.request.user, Collaborator)
@@ -285,9 +311,7 @@ class SurveyQuestionLikertViewSet(BaseAPIViewSet):
     queryset = SurveyQuestionLikert.objects.all()
     serializer_class = SurveyQuestionLikertSerializer
     filter_class = SurveyQuestionLikertFilterSet
-    permission_classes = [
-        ReadOnly,
-    ]
+    permission_classes = [ReadOnly]
 
 
 class SurveyAnswerLikertSerializer(BaseAPISerializer):

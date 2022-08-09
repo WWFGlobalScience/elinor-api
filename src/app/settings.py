@@ -24,14 +24,17 @@ DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+API_DOMAIN = "https://dev-api.elinordata.org"
 FRONTEND_DOMAIN = "https://elinordata.org"
 if ENVIRONMENT != "prod":
+    API_DOMAIN = "https://dev-api.elinordata.org"
     FRONTEND_DOMAIN = "https://dev.elinordata.org"
 if ENVIRONMENT not in ("prod", "dev"):
     DEBUG = True
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    API_DOMAIN = "http://localhost:8081"
     FRONTEND_DOMAIN = "http://localhost:3000"
 
 

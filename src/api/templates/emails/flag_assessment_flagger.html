@@ -1,0 +1,22 @@
+{% extends "emails/base.html" %}
+{% block title %}Assessment flagged{% endblock %}
+{% block body %}
+    <p>
+        {{ assessmentflag.reporter.username }}:
+    </p>
+    <p>
+        This is to acknowledge that you have flagged {{ assessmentflag.assessment.name }} for the following reason:<br />
+        {{ assessmentflag.flag_type }}
+    </p>
+    <p>
+        With the following comments:<br />
+        {{ assessmentflag.explanation }}
+    </p>
+    <p>
+        We shall go ahead and hide the assessment, and review your concerns with the assessment admin.
+        We'll get in touch with you if necessary, and once the issue is resolved we'll finalize the assessment.
+    </p>
+    <p>
+        Thank you
+    </p>
+{% endblock %}

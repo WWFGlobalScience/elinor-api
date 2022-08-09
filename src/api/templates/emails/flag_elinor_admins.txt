@@ -1,0 +1,15 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+Elinor Admin:
+
+Assessment {{ assessmentflag.assessment.name }} has been flagged by {{ assessmentflag.reporter.username }} <{{ assessmentflag.reporter.email }}> for the following reason:
+{{ assessmentflag.flag_type }}
+
+With the following comments:
+{{ assessmentflag.explanation }}
+
+It is recommended that you hide the assessment by changing it to private and contact the assessment admin to resolve the issue:
+{{ admin_link }}
+
+Thank you
+{% endblock %}
