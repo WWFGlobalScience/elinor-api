@@ -1,0 +1,14 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+{{ assessmentflag.reporter.username }}:
+
+This is to acknowledge that you have flagged {{ assessmentflag.assessment.name }} for the following reason:
+{{ assessmentflag.flag_type }}
+
+With the following comments:
+{{ assessmentflag.explanation }}
+
+We shall go ahead and hide the assessment, and review your concerns with the assessment admin. We'll get in touch with you if necessary, and once the issue is resolved we'll finalize the assessment.
+
+Thank you
+{% endblock %}

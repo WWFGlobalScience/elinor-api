@@ -21,6 +21,7 @@ from .resources.management import (
 from .resources.assessment import (
     AssessmentViewSet,
     AssessmentChangeViewSet,
+    AssessmentFlagViewSet,
     CollaboratorViewSet,
     SurveyQuestionLikertViewSet,
     SurveyAnswerLikertViewSet,
@@ -32,6 +33,7 @@ router = ElinorDefaultRouter()
 router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"attributes", AttributeViewSet, "attribute")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")
+router.register(r"assessmentflags", AssessmentFlagViewSet, "assessmentflag")
 router.register(r"collaborators", CollaboratorViewSet, "collaborator")
 router.register(r"documents", DocumentViewSet, "document")
 router.register(r"governancetypes", GovernanceTypeViewSet, "governancetype")

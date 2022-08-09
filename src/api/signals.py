@@ -1,8 +1,21 @@
+from django import urls
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.db.models.signals import post_delete, post_save
 from django.dispatch import receiver
-from .models import Assessment, Document, ManagementArea, Profile
+from .utils.email import (
+    email_elinor_admins_flag,
+    email_assessment_admins_flag,
+    email_assessment_flagger,
+)
+from .models import (
+    Assessment,
+    AssessmentFlag,
+    Collaborator,
+    Document,
+    ManagementArea,
+    Profile,
+)
 
 
 @receiver(post_save, sender=settings.AUTH_USER_MODEL)
@@ -64,3 +77,19 @@ def delete_doc_files(sender, instance, **kwargs):
 def delete_ma_files(sender, instance, **kwargs):
     delete_model_file(instance, "import_file")
     delete_model_file(instance, "map_image")
+
+
+@receiver(post_save, sender=AssessmentFlag)
+def notify_assessment_flagged(sender, instance, created, **kwargs):
+    if created:
+        reverse_str = f"admin:api_assessment_change"
+        url = urls.reverse(reverse_str, args=[instance.assessment.pk])
+        admin_link = f"{settings.API_DOMAIN}{url}"
+        assessment_admins = Collaborator.objects.filter(
+            assessment=instance.assessment, role=Collaborator.ADMIN
+        )
+        admin_emails = [a.user.email for a in assessment_admins]
+
+        email_elinor_admins_flag(instance, admin_link)
+        email_assessment_admins_flag(instance, admin_emails)
+        email_assessment_flagger(instance)

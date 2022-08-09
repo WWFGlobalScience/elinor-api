@@ -289,6 +289,52 @@ class AssessmentChange(BaseModel):
         return f"{self.event_on} {self.assessment} {self.event_type}"
 
 
+class AssessmentFlag(BaseModel):
+    assessment_lookup = "assessment"
+
+    INAPPROPRIATE = "inappropriate"
+    PERSONAL = "personal"
+    INACCURATE = "inaccurate"
+    FLAG_TYPES = (
+        (INAPPROPRIATE, _("inappropriate language or content")),
+        (PERSONAL, _("personal information")),
+        (INACCURATE, _("inaccurate details")),
+    )
+
+    assessment = models.ForeignKey(
+        Assessment, related_name="assessment_flags", on_delete=models.CASCADE
+    )
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="user_assessment_flags",
+        on_delete=models.CASCADE,
+    )
+    datetime_resolved = models.DateTimeField(null=True, blank=True)
+    flag_type = models.CharField(max_length=20, choices=FLAG_TYPES, blank=True)
+    flag_type_other = models.CharField(max_length=255, blank=True)
+    explanation = models.TextField()
+
+    def clean(self):
+        if self.flag_type == "" and self.flag_type_other == "":
+            raise ValidationError(
+                "Either flag_type or flag_type_other must be specified"
+            )
+        if self.flag_type != "" and self.flag_type_other != "":
+            raise ValidationError(
+                "Only one of flag_type and flag_type_other can be specified, not both"
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ["created_on", "assessment", "reporter__username"]
+
+    def __str__(self):
+        return f"{self.assessment.name} {self.reporter}"
+
+
 class SurveyQuestion(BaseModel):
     attribute = models.ForeignKey(
         Attribute, related_name="attribute_questions", on_delete=models.PROTECT

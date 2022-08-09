@@ -78,9 +78,7 @@ class GovernanceType(BaseChoiceModel):
 
 class ManagementAuthority(BaseChoiceModel):
     class Meta:
-        ordering = [
-            "name",
-        ]
+        ordering = ["name"]
         verbose_name_plural = "management authorities"
 
 
