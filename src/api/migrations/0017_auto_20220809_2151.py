@@ -10,12 +10,12 @@ def convert_choices(*args, **kwargs):
     ManagementArea.objects.filter(governance_type=mg).update(governance_type=sg)
     mg.delete()
 
-    Assessment.objects.filter(
-        collection_method=Assessment.PERSON_RESPONSIBLE_AND_EXTERNAL
-    ).update(collection_method=Assessment.DESKBASED)
-    Assessment.objects.filter(
-        collection_method=Assessment.COMBINATION_COLLECTION_METHOD
-    ).update(collection_method=Assessment.OTHER_COLLECTION_METHOD)
+    Assessment.objects.filter(collection_method=20).update(
+        collection_method=Assessment.DESKBASED
+    )
+    Assessment.objects.filter(collection_method=40).update(
+        collection_method=Assessment.OTHER_COLLECTION_METHOD
+    )
 
 
 class Migration(migrations.Migration):
