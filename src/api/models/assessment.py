@@ -46,26 +46,12 @@ class Assessment(BaseModel):
         (COMMUNITY, _("community leaders / representatives")),
     )
 
-    PERSON_RESPONSIBLE = 10
-    PERSON_RESPONSIBLE_AND_EXTERNAL = 20
-    INTERVIEWS = 30
-    COMBINATION_COLLECTION_METHOD = 40
+    DESKBASED = 10
+    FIELDBASED = 30
     OTHER_COLLECTION_METHOD = 50
     COLLECTION_METHOD_CHOICES = (
-        (
-            PERSON_RESPONSIBLE,
-            _(
-                "Through knowledge of the person(s) responsible for filling out assessment"
-            ),
-        ),
-        (
-            PERSON_RESPONSIBLE_AND_EXTERNAL,
-            _(
-                "Through knowledge of the person(s) responsible for filling our assessment and acquired external input from informal conversations and secondary documents"
-            ),
-        ),
-        (INTERVIEWS, _("Through semi-structured interviews and/or focus groups")),
-        (COMBINATION_COLLECTION_METHOD, _("A combination of the above")),
+        (DESKBASED, _("Desk-based assessment")),
+        (FIELDBASED, _("Field-based assessment")),
         (OTHER_COLLECTION_METHOD, _("Other (please provide details below)")),
     )
 
