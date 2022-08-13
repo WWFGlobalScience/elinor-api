@@ -3,7 +3,7 @@ version: '3.8'
 services:
   elinor_db:
     container_name: elinor_db
-    image: postgis/postgis:13-3.1-alpine
+    image: postgis/postgis:13-3.2-alpine
     environment:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_USER=postgres
