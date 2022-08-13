@@ -15,10 +15,10 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import include, path
-from api.urls import api_urls
-from dj_rest_auth.views import PasswordResetConfirmView
 from api.resources.authuser import NewEmailConfirmation
+from api.urls import api_urls
 from dj_rest_auth.registration.views import VerifyEmailView, ConfirmEmailView
+from dj_rest_auth.views import PasswordResetConfirmView
 
 
 urlpatterns = [
