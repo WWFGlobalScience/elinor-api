@@ -1,0 +1,10 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+An Elinor user has sent this email to you as an administrator of the assessment:
+{{ assessment.name }}
+
+{{ message }}
+
+The user who sent the email is:
+{{ name }} <{{ from_email }}>
+{% endblock %}

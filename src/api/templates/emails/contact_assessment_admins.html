@@ -1,0 +1,14 @@
+{% extends "emails/base.html" %}
+{% block title %}Contact email from site user regarding assessment {{ assessment.name }}{% endblock %}
+{% block body %}
+    <p>
+        An Elinor user has sent this email to you as an administrator of the assessment:<br />
+        {{ assessment.name }}
+    </p>
+    <p>
+        {{ message }}
+    </p>
+    <p>The user who sent the email is:
+        <a href="mailto:{{ from_email }}">{{ name }} <{{ from_email }}></a>
+    </p>
+{% endblock %}

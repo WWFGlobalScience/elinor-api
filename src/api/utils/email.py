@@ -1,15 +1,14 @@
 import datetime
-import os
 from pathlib import Path
-
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from ..models import Collaborator
 
 
 def elinor_email(subject, template, to, context=None, from_email=None, reply_to=None):
     _subject = f"[Elinor] {subject}"
-    path, _ = os.path.splitext(template)
+    path = Path(template).parent / Path(template).stem
     template_dir = settings.TEMPLATES[0]["DIRS"][0]
     template_html = f"{path}.html"
     template_text = f"{path}.txt"
@@ -31,12 +30,17 @@ def elinor_email(subject, template, to, context=None, from_email=None, reply_to=
     msg.send()
 
 
-def email_elinor_admins(subject, message, name, from_email):
+def email_elinor_admins(**kwargs):
     template = "emails/contact_elinor_admins.html"
-    context = {"message": message, "name": name, "from_email": from_email}
+    from_email = kwargs["from_email"]
+    context = {
+        "message": kwargs["message"],
+        "name": kwargs["name"],
+        "from_email": from_email,
+    }
 
     elinor_email(
-        subject,
+        kwargs["subject"],
         template,
         [settings.EMAIL_CONTACT],
         context=context,
@@ -44,8 +48,26 @@ def email_elinor_admins(subject, message, name, from_email):
     )
 
 
-def email_assessment_admins(assessment, subject, message, name, from_email):
-    pass
+def email_assessment_admins(**kwargs):
+    template = "emails/contact_assessment_admins.html"
+    from_email = kwargs["from_email"]
+    assessment = kwargs["assessment"]
+    context = {
+        "message": kwargs["message"],
+        "name": kwargs["name"],
+        "from_email": from_email,
+        "assessment": assessment,
+    }
+    admins = Collaborator.objects.filter(assessment=assessment, role=Collaborator.ADMIN)
+    admin_emails = [admin.user.email for admin in admins]
+
+    elinor_email(
+        kwargs["subject"],
+        template,
+        admin_emails,
+        context=context,
+        reply_to=[from_email],
+    )
 
 
 def email_elinor_admins_flag(assessmentflag, admin_link):
