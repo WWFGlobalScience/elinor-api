@@ -16,8 +16,10 @@ ACCEPTED_EXTENSIONS = (".shp",)
 ACCEPTED_GEOGCS = ("GEOGCS",)
 ACCEPTED_EPSG = ("4326",)
 POLYGON = "Polygon"
+POLYGON25D = "Polygon25D"
 MULTIPOLYGON = "MultiPolygon"
-ACCEPTED_GEOMETRIES = (POLYGON, MULTIPOLYGON)
+MULTIPOLYGON25D = "MultiPolygon25D"
+ACCEPTED_GEOMETRIES = (POLYGON, POLYGON25D, MULTIPOLYGON, MULTIPOLYGON25D)
 
 
 def get_extension_from_files(files):
@@ -65,6 +67,7 @@ def clean_multipolygon(polygon):
     if polygon.geom_type in ACCEPTED_GEOMETRIES:
         polygon.close_rings()
         # print(polygon.geos.valid_reason)
+        polygon.coord_dim = 2  # coerce 3D geometries to 2D
         multi = polygon
         # Convert polygon of rings to multipolygon of polygons, to ensure dissolve
         if polygon.geom_type == POLYGON:
