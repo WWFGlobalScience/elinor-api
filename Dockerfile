@@ -36,8 +36,7 @@ RUN rm /etc/nginx/sites-enabled/default && rm /etc/nginx/sites-available/default
 ADD ./config/webapp.nginxconf /etc/nginx/sites-enabled/
 
 RUN mkdir -p /var/log/supervisor
-ADD ./config/supervisor_conf.d/nginx.conf /etc/supervisor/conf.d/
-ADD ./config/supervisor_conf.d/webapp.conf /etc/supervisor/conf.d/
+ADD ./config/supervisor_conf.d/*.conf /etc/supervisor/conf.d/
 
 WORKDIR /var/projects/webapp
 ADD ./src .
