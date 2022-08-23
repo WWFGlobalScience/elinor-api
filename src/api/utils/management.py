@@ -11,7 +11,7 @@ from tempfile import TemporaryDirectory
 
 
 MAXIMUM_FILESIZE = 10485760  # 10MB
-ACCEPTED_FILETYPES = ("application/zip",)
+ACCEPTED_FILETYPES = ("application/zip", "application/x-zip-compressed")
 ACCEPTED_EXTENSIONS = (".shp",)
 ACCEPTED_GEOGCS = ("GEOGCS",)
 ACCEPTED_EPSG = ("4326",)
