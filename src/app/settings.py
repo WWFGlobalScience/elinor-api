@@ -73,6 +73,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "corsheaders.middleware.CorsPostCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -188,6 +189,7 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "Elinor <{}>".format(EMAIL_HOST_USER)
 EMAIL_CONTACT = os.environ.get("EMAIL_CONTACT")
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_REPLACE_HTTPS_REFERER = True
 
 LOGGING = {
     "version": 1,
