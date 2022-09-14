@@ -133,3 +133,5 @@ src/static/
 *.zip
 
 .idea/
+
+recaptcha_key.txt

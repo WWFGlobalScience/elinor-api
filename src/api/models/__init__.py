@@ -18,6 +18,7 @@ from .management import (
 from .assessment import (
     Assessment,
     AssessmentChange,
+    AssessmentFlag,
     Collaborator,
     SurveyQuestionLikert,
     SurveyAnswerLikert,

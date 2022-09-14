@@ -68,8 +68,8 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
 
         assessment = get_assessment_or_none(obj)
         if assessment:
-            collaborator = get_collaborator(assessment, user)
-            if collaborator.is_admin:
+            user_collaborator = get_collaborator(assessment, user)
+            if user_collaborator.is_admin:
                 if not assessment.is_finalized:
                     return True
                 elif request.method in ("PUT", "PATCH"):
@@ -81,7 +81,7 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
                     return set(serializer.validated_data.keys()).issubset(
                         self.PUBLISHED_MODIFIABLE_FIELDS
                     )
-            elif collaborator.is_collector:
+            elif user_collaborator.is_collector:
                 return not assessment.is_finalized and request.method in (
                     "PUT",
                     "PATCH",
@@ -106,17 +106,15 @@ class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermissi
                         {"assessment": "Missing assessment id"}
                     )
                 user_collaborator = get_collaborator(assessment, user)
-                return not assessment.is_finalized and user_collaborator.is_admin
+                return user_collaborator.is_admin
             return True  # PUT/PATCH/DELETE handled with object permissions
 
         return False
 
     def has_object_permission(self, request, view, obj):
         user = request.user
-        if user.is_authenticated:
-            if user.is_superuser:
-                return True
-            user_collaborator = get_collaborator(obj.assessment, user)
-            return not obj.assessment.is_finalized and user_collaborator.is_admin
+        if request.method in permissions.SAFE_METHODS or user.is_superuser:
+            return True
 
-        return False
+        user_collaborator = get_collaborator(obj.assessment, user)
+        return user_collaborator.is_admin

@@ -13,7 +13,7 @@ from .resources.base import (
     SupportSourceViewSet,
     UserViewSet,
 )
-from .resources.contact import contact_elinor_admins
+from .resources.contact import contact_assessment_admins, contact_elinor_admins
 from .resources.management import (
     ManagementAreaViewSet,
     ManagementAreaZoneViewSet,
@@ -21,6 +21,7 @@ from .resources.management import (
 from .resources.assessment import (
     AssessmentViewSet,
     AssessmentChangeViewSet,
+    AssessmentFlagViewSet,
     CollaboratorViewSet,
     SurveyQuestionLikertViewSet,
     SurveyAnswerLikertViewSet,
@@ -32,6 +33,7 @@ router = ElinorDefaultRouter()
 router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"attributes", AttributeViewSet, "attribute")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")
+router.register(r"assessmentflags", AssessmentFlagViewSet, "assessmentflag")
 router.register(r"collaborators", CollaboratorViewSet, "collaborator")
 router.register(r"documents", DocumentViewSet, "document")
 router.register(r"governancetypes", GovernanceTypeViewSet, "governancetype")
@@ -53,5 +55,10 @@ router.register(r"users", UserViewSet, "user")
 
 api_urls = router.urls + [
     path("assessmentversion", assessmentversion, name="assessmentversion"),
+    path(
+        "contactassessmentadmins",
+        contact_assessment_admins,
+        name="contactassessmentadmin",
+    ),
     path("contactelinoradmins", contact_elinor_admins, name="contactelinoradmin"),
 ]

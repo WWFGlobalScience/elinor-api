@@ -16,45 +16,7 @@ from .management import ManagementArea
 class Assessment(BaseModel):
     assessment_lookup = ""
 
-    ALLOWED_PUBLISHED_NULLFIELDS = (
-        "created_by",
-        "updated_by",
-        "stakeholder_harvest_rights",
-        "stakeholder_develop_rules",
-        "stakeholder_exclude_others",
-        "vulnerable_defined_rights",
-        "legislation_exists",
-        "rights_governance",
-        "exercise_rights",
-        "benefits_shared",
-        "stakeholder_agency",
-        "governance_accountable",
-        "timely_information",
-        "penalties_fair",
-        "penalties_frequency",
-        "multiple_knowledge_social",
-        "conflict_resolution_access",
-        "management_levels_cohesive",
-        "supportive_networks",
-        "regulations_exist",
-        "management_capacity",
-        "boundary_known",
-        "boundary_defined",
-        "management_plan",
-        "outcomes_achieved_ecological",
-        "outcomes_achieved_social",
-        "multiple_knowledge_integrated",
-        "ecological_monitoring_used",
-        "social_monitoring_used",
-        "sufficient_staff",
-        "staff_capacity",
-        "sufficient_budget",
-        "budget_secure",
-        "sufficient_equipment",
-        "climatechange_incorporated",
-        "climatechange_managed",
-        "climatechange_monitored",
-    )
+    ALLOWED_PUBLISHED_NULLFIELDS = ("created_by", "updated_by")
 
     NOT_FINALIZED = 90
     TEST = 80
@@ -84,26 +46,12 @@ class Assessment(BaseModel):
         (COMMUNITY, _("community leaders / representatives")),
     )
 
-    PERSON_RESPONSIBLE = 10
-    PERSON_RESPONSIBLE_AND_EXTERNAL = 20
-    INTERVIEWS = 30
-    COMBINATION_COLLECTION_METHOD = 40
+    DESKBASED = 10
+    FIELDBASED = 30
     OTHER_COLLECTION_METHOD = 50
     COLLECTION_METHOD_CHOICES = (
-        (
-            PERSON_RESPONSIBLE,
-            _(
-                "Through knowledge of the person(s) responsible for filling out assessment"
-            ),
-        ),
-        (
-            PERSON_RESPONSIBLE_AND_EXTERNAL,
-            _(
-                "Through knowledge of the person(s) responsible for filling our assessment  and acquired external input from informal conversations and secondary documents"
-            ),
-        ),
-        (INTERVIEWS, _("Through semi-structured interviews and/or focus groups")),
-        (COMBINATION_COLLECTION_METHOD, _("A combination of the above")),
+        (DESKBASED, _("Desk-based assessment")),
+        (FIELDBASED, _("Field-based assessment")),
         (OTHER_COLLECTION_METHOD, _("Other (please provide details below)")),
     )
 
@@ -169,321 +117,6 @@ class Assessment(BaseModel):
     )
     collection_method_text = models.TextField(blank=True)
 
-    stakeholder_harvest_rights = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are there formal or informal rules that clearly define the rights "
-            "of local stakeholders to harvest resources within the MA?"
-        ),
-    )
-    stakeholder_harvest_rights_text = models.TextField(blank=True)
-    stakeholder_develop_rules = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are there formal or informal rules that clearly define the rights "
-            "of local stakeholders to develop rules for the use of resources within the MA?"
-        ),
-    )
-    stakeholder_develop_rules_text = models.TextField(blank=True)
-    stakeholder_exclude_others = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are there formal or informal rules that clearly define the rights "
-            "of local stakeholders to exclude other groups from harvesting resources within the MA?"
-        ),
-    )
-    stakeholder_exclude_others_text = models.TextField(blank=True)
-    vulnerable_defined_rights = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do women or other vulnerable groups living in the local community have clearly defined rights to natural "
-            "resources within the MA?"
-        ),
-    )
-    vulnerable_defined_rights_text = models.TextField(blank=True)
-    legislation_exists = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Is there legislation in place to enable resource management by local communities?"
-        ),
-    )
-    legislation_exists_text = models.TextField(blank=True)
-    rights_governance = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are rights to harvest or benefit from resources within the MA related to the contributions "
-            "of local stakeholders to the governance of the MA (in terms of time and/or resources contributed)?"
-        ),
-    )
-    rights_governance_text = models.TextField(blank=True)
-    exercise_rights = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are local stakeholders able to exercise their rights to natural resources?"
-        ),
-    )
-    exercise_rights_text = models.TextField(blank=True)
-    benefits_shared = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Is there an effective strategy or guideline for ensuring benefits from the MA are shared equitably among "
-            "local stakeholders?"
-        ),
-    )
-    benefits_shared_text = models.TextField(blank=True)
-    stakeholder_agency = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "To what extent are local stakeholders affected by the rules "
-            "able to play a role in making changes to the rules?"
-        ),
-    )
-    stakeholder_agency_text = models.TextField(blank=True)
-    governance_accountable = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are those responsible for governance of the MA held to account if they do not perform their role?"
-        ),
-    )
-    governance_accountable_text = models.TextField(blank=True)
-    timely_information = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do stakeholders receive information from MA authorities in a timely manner?"
-        ),
-    )
-    timely_information_text = models.TextField(blank=True)
-    penalties_fair = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Formally, are the penalties for breaking resource use rules equal to the size of the offence?"
-        ),
-    )
-    penalties_fair_text = models.TextField(blank=True)
-    penalties_frequency = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "How often are the penalties for breaking resource use rules administered?"
-        ),
-    )
-    penalties_frequency_text = models.TextField(blank=True)
-    multiple_knowledge_social = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do planning and management processes draw on multiple knowledge sources (scientific, experiential, "
-            "local, and traditional knowledge) for monitoring the social impacts of the MA?"
-        ),
-    )
-    multiple_knowledge_social_text = models.TextField(blank=True)
-    conflict_resolution_access = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do stakeholders have access to effective conflict resolution mechanisms?"
-        ),
-    )
-    conflict_resolution_access_text = models.TextField(blank=True)
-    management_levels_cohesive = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do different levels of management exist within the MA that function as a cohesive unit?"
-        ),
-    )
-    management_levels_cohesive_text = models.TextField(blank=True)
-    supportive_networks = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do networks exist that develop social relations and support mutual learning among stakeholders?"
-        ),
-    )
-    supportive_networks_text = models.TextField(blank=True)
-    regulations_exist = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are appropriate regulations in place to control natural resource based activities in the MA?"
-        ),
-    )
-    regulations_exist_text = models.TextField(blank=True)
-    management_capacity = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do those responsible for managing the MA (e.g., staff/community associations/ management group) have the "
-            "capacity to enforce the rules and regulations?"
-        ),
-    )
-    management_capacity_text = models.TextField(blank=True)
-    boundary_known = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is the boundary known by all stakeholder groups?"),
-    )
-    boundary_known_text = models.TextField(blank=True)
-    boundary_defined = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is the boundary clearly defined?"),
-    )
-    boundary_defined_text = models.TextField(blank=True)
-    management_plan = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Is there a management plan for the MA and is it being implemented?"
-        ),
-    )
-    management_plan_text = models.TextField(blank=True)
-    outcomes_achieved_ecological = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "To what extent do you feel the ecological outcomes are being achieved?"
-        ),
-    )
-    outcomes_achieved_ecological_text = models.TextField(blank=True)
-    outcomes_achieved_social = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "To what extent do you feel the social outcomes are being achieved?"
-        ),
-    )
-    outcomes_achieved_social_text = models.TextField(blank=True)
-    multiple_knowledge_integrated = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do those responsible for managing the MA integrate different types of knowledge into management decisions?"
-        ),
-    )
-    multiple_knowledge_integrated_text = models.TextField(blank=True)
-    ecological_monitoring_used = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are systems in place to monitor and document ecological conditions in the MA?"
-        ),
-    )
-    ecological_monitoring_used_text = models.TextField(blank=True)
-    social_monitoring_used = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are systems in place to monitor and document the social conditions of "
-            "communities in and/or adjacent to the MA?"
-        ),
-    )
-    social_monitoring_used_text = models.TextField(blank=True)
-    sufficient_staff = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Are there enough people employed or engaged to manage the MA?"),
-    )
-    sufficient_staff_text = models.TextField(blank=True)
-    staff_capacity = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Do those responsible for managing the MA have sufficient capacity "
-            "(e.g., information and adequate skills) to fulfill management objectives?"
-        ),
-    )
-    staff_capacity_text = models.TextField(blank=True)
-    sufficient_budget = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is the current budget sufficient?"),
-    )
-    sufficient_budget_text = models.TextField(blank=True)
-    budget_secure = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is the budget secure?"),
-    )
-    budget_secure_text = models.TextField(blank=True)
-    sufficient_equipment = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is equipment sufficient for management needs?"),
-    )
-    sufficient_equipment_text = models.TextField(blank=True)
-    climatechange_incorporated = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Is information on climate change being used to inform strategies "
-            "to build resilience to climate change for local stakeholders?"
-        ),
-    )
-    climatechange_incorporated_text = models.TextField(blank=True)
-    climatechange_managed = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_("Is the MA consciously managed to adapt to climate change?"),
-    )
-    climatechange_managed_text = models.TextField(blank=True)
-    climatechange_monitored = models.PositiveSmallIntegerField(
-        choices=LIKERT_CHOICES,
-        null=True,
-        blank=True,
-        verbose_name=_(
-            "Are systems in place to monitor and document changes in climate change and increased weather variability "
-            "and their impacts on people and nature?"
-        ),
-    )
-    climatechange_monitored_text = models.TextField(blank=True)
-
     @property
     def required_questions(self):
         if hasattr(self, "_required_questions"):
@@ -516,7 +149,7 @@ class Assessment(BaseModel):
             #  Does not check non-nullable fields with default values or char/text fields with empty strings.
             nullfields = []
             for field in self._meta.get_fields():
-                if not field.is_relation:
+                if not field.is_relation or field.one_to_one:
                     value = getattr(self, field.name)
                     if (
                         value is None
@@ -642,6 +275,52 @@ class AssessmentChange(BaseModel):
         return f"{self.event_on} {self.assessment} {self.event_type}"
 
 
+class AssessmentFlag(BaseModel):
+    assessment_lookup = "assessment"
+
+    INAPPROPRIATE = "inappropriate"
+    PERSONAL = "personal"
+    INACCURATE = "inaccurate"
+    FLAG_TYPES = (
+        (INAPPROPRIATE, _("inappropriate language or content")),
+        (PERSONAL, _("personal information")),
+        (INACCURATE, _("inaccurate details")),
+    )
+
+    assessment = models.ForeignKey(
+        Assessment, related_name="assessment_flags", on_delete=models.CASCADE
+    )
+    reporter = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        related_name="user_assessment_flags",
+        on_delete=models.CASCADE,
+    )
+    datetime_resolved = models.DateTimeField(null=True, blank=True)
+    flag_type = models.CharField(max_length=20, choices=FLAG_TYPES, blank=True)
+    flag_type_other = models.CharField(max_length=255, blank=True)
+    explanation = models.TextField()
+
+    def clean(self):
+        if self.flag_type == "" and self.flag_type_other == "":
+            raise ValidationError(
+                "Either flag_type or flag_type_other must be specified"
+            )
+        if self.flag_type != "" and self.flag_type_other != "":
+            raise ValidationError(
+                "Only one of flag_type and flag_type_other can be specified, not both"
+            )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        super().save(*args, **kwargs)
+
+    class Meta:
+        ordering = ["created_on", "assessment", "reporter__username"]
+
+    def __str__(self):
+        return f"{self.assessment.name} {self.reporter}"
+
+
 class SurveyQuestion(BaseModel):
     attribute = models.ForeignKey(
         Attribute, related_name="attribute_questions", on_delete=models.PROTECT
@@ -677,7 +356,7 @@ class SurveyQuestionLikert(SurveyQuestion):
 class SurveyAnswer(BaseModel):
     assessment_lookup = "assessment"
 
-    assessment = models.ForeignKey(Assessment, on_delete=models.PROTECT)
+    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
 
     class Meta:
         abstract = True

@@ -11,13 +11,15 @@ from tempfile import TemporaryDirectory
 
 
 MAXIMUM_FILESIZE = 10485760  # 10MB
-ACCEPTED_FILETYPES = ("application/zip",)
+ACCEPTED_FILETYPES = ("application/zip", "application/x-zip-compressed")
 ACCEPTED_EXTENSIONS = (".shp",)
 ACCEPTED_GEOGCS = ("GEOGCS",)
 ACCEPTED_EPSG = ("4326",)
 POLYGON = "Polygon"
+POLYGON25D = "Polygon25D"
 MULTIPOLYGON = "MultiPolygon"
-ACCEPTED_GEOMETRIES = (POLYGON, MULTIPOLYGON)
+MULTIPOLYGON25D = "MultiPolygon25D"
+ACCEPTED_GEOMETRIES = (POLYGON, POLYGON25D, MULTIPOLYGON, MULTIPOLYGON25D)
 
 
 def get_extension_from_files(files):
@@ -65,6 +67,7 @@ def clean_multipolygon(polygon):
     if polygon.geom_type in ACCEPTED_GEOMETRIES:
         polygon.close_rings()
         # print(polygon.geos.valid_reason)
+        polygon.coord_dim = 2  # coerce 3D geometries to 2D
         multi = polygon
         # Convert polygon of rings to multipolygon of polygons, to ensure dissolve
         if polygon.geom_type == POLYGON:
@@ -127,7 +130,16 @@ def get_multipolygon_from_shp(field, shapefiledir):
         and shp.srs["AUTHORITY", 1] not in ACCEPTED_EPSG
     ):
         # TODO: Handle other CRSs by transforming
-        raise ValidationError({field: f"Unsupported shapefile CRS: {shp.srs}"})
+        crs_label = ""
+        if shp.srs["PROJCS"] is not None:
+            crs_label = shp.srs["PROJCS"]
+        elif shp.srs["GEOGCS"] is not None:
+            crs_label = shp.srs["GEOGCS"]
+        if shp.srs["AUTHORITY"] is not None:
+            crs_label = (
+                f"{crs_label} ({shp.srs['AUTHORITY']} {shp.srs['AUTHORITY', 1]})"
+            )
+        raise ValidationError({field: f"Unsupported shapefile CRS: {crs_label}"})
 
     if shp.geom_type not in ACCEPTED_GEOMETRIES:
         raise ValidationError(

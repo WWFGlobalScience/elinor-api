@@ -1,0 +1,22 @@
+{% extends "emails/base.html" %}
+{% block title %}Assessment flagged{% endblock %}
+{% block body %}
+    <p>
+        Elinor Admin:
+    </p>
+    <p>
+        Assessment {{ assessmentflag.assessment.name }} has been flagged by
+        {{ assessmentflag.reporter.username }} <<a href="mailto:{{ from_email }}"{{ assessmentflag.reporter.email }}></a>> for the following reason:<br />
+        {{ assessmentflag.flag_type }}
+    </p>
+    <p>
+        With the following comments:<br />
+        {{ assessmentflag.explanation }}
+    </p>
+    <p>
+        It is recommended that you hide the assessment by changing it to private and contact the assessment admin to resolve the issue:<br />
+        <a href="{{ admin_link }}">{{ admin_link }}</a>
+    </p>
+    <p>
+    </p>
+{% endblock %}

@@ -24,14 +24,17 @@ DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
+API_DOMAIN = "https://dev-api.elinordata.org"
 FRONTEND_DOMAIN = "https://elinordata.org"
 if ENVIRONMENT != "prod":
+    API_DOMAIN = "https://dev-api.elinordata.org"
     FRONTEND_DOMAIN = "https://dev.elinordata.org"
 if ENVIRONMENT not in ("prod", "dev"):
     DEBUG = True
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+    API_DOMAIN = "http://localhost:8081"
     FRONTEND_DOMAIN = "http://localhost:3000"
 
 
@@ -70,6 +73,7 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
+    "corsheaders.middleware.CorsPostCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
@@ -171,6 +175,7 @@ AWS_BACKUP_BUCKET = os.environ.get("AWS_BACKUP_BUCKET")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = AWS_S3_REGION_NAME = os.environ.get("AWS_REGION")
+S3_DBBACKUP_MAXAGE = 60  # days
 DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_LOCATION = f"{ENVIRONMENT}/"
@@ -184,6 +189,7 @@ EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "Elinor <{}>".format(EMAIL_HOST_USER)
 EMAIL_CONTACT = os.environ.get("EMAIL_CONTACT")
 CORS_ORIGIN_ALLOW_ALL = True
+CORS_REPLACE_HTTPS_REFERER = True
 
 LOGGING = {
     "version": 1,
@@ -210,6 +216,7 @@ SITE_ID = 1
 REST_SESSION_LOGIN = False
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
+ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
 REST_AUTH_SERIALIZERS = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.UserSerializer",
@@ -219,13 +226,12 @@ REST_AUTH_REGISTER_SERIALIZERS = {
     "REGISTER_SERIALIZER": "api.resources.authuser.UserRegistrationSerializer",
 }
 
-# Needed?
-# AUTHENTICATION_BACKENDS = [
-#     # allauth specific authentication methods, such as login by e-mail
-#     'allauth.account.auth_backends.AuthenticationBackend',
-#     # Needed to login by username in Django admin, regardless of allauth
-#     'django.contrib.auth.backends.ModelBackend',
-# ]
+AUTHENTICATION_BACKENDS = [
+    # allauth specific authentication methods, such as login by e-mail
+    'allauth.account.auth_backends.AuthenticationBackend',
+    # Needed to login by username in Django admin, regardless of allauth
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 DRF_RECAPTCHA_SECRET_KEY = os.environ.get("DRF_RECAPTCHA_SECRET_KEY")
 # DRF_RECAPTCHA_TESTING = True
