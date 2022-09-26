@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -17,6 +18,7 @@ from rest_framework.decorators import (
     authentication_classes,
     permission_classes,
 )
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -37,6 +39,12 @@ from ..permissions import (
     ReadOnly,
     ReadOnlyOrAuthenticatedCreate,
 )
+
+try:
+    from allauth.account.utils import send_email_confirmation, setup_user_email
+    from allauth.account.models import EmailAddress
+except ImportError:
+    raise ImportError("allauth needs to be added to INSTALLED_APPS.")
 
 
 User = get_user_model()
@@ -153,7 +161,6 @@ class ReadOnlyChoiceSerializer(serializers.Serializer):
 
 
 class UserSerializer(BaseAPISerializer):
-    last_login = serializers.ReadOnlyField()
     affiliation = serializers.PrimaryKeyRelatedField(
         allow_null=True,
         queryset=Organization.objects.all(),
@@ -174,6 +181,22 @@ class UserSerializer(BaseAPISerializer):
         source="profile.updated_by",
     )
 
+    class Meta:
+        model = User
+        exclude = [
+            "groups",
+            "user_permissions",
+            "password",
+            "is_staff",
+            "is_active",
+            "email",
+        ]
+        read_only_fields = ["date_joined", "is_superuser"]
+
+
+class SelfSerializer(UserSerializer):
+    last_login = serializers.ReadOnlyField()
+
     def _create_or_update_profile(self, user, profile_data, create=False):
         current_user = user
         request = self.context.get("request")
@@ -191,14 +214,30 @@ class UserSerializer(BaseAPISerializer):
         return user
 
     def create(self, validated_data):
-        profile_data = validated_data.pop("profile", None)
-        user = super().create(validated_data)
-        return self._create_or_update_profile(user, profile_data, True)
+        raise MethodNotAllowed("POST")
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop("profile", None)
+        # email: validation already applied; saved to both user and EmailAddress
+        incoming_email = validated_data.get("email")
+        resetup_email = False
+        if incoming_email and incoming_email != instance.email:
+            resetup_email = True
+
         user = super().update(instance, validated_data)
-        return self._create_or_update_profile(user, profile_data)
+        user = self._create_or_update_profile(user, profile_data)
+
+        if resetup_email:
+            request = self.context.get("request")
+            EmailAddress.objects.filter(user=user).delete()
+            setup_user_email(request, user, [])
+            send_email_confirmation(request, user, False, incoming_email)
+            try:
+                request.user.auth_token.delete()
+            except (AttributeError, ObjectDoesNotExist):
+                pass
+
+        return user
 
     class Meta:
         model = User
@@ -208,7 +247,6 @@ class UserSerializer(BaseAPISerializer):
             "password",
             "is_staff",
             "is_active",
-            "email",
         ]
         read_only_fields = ["date_joined", "is_superuser"]
 
