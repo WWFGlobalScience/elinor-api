@@ -1,8 +1,12 @@
+from collections import OrderedDict
+from datetime import datetime
+from django.http import StreamingHttpResponse
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS
 from rest_framework_gis.pagination import GeoJsonPagination
 from ..base import BaseAPIViewSet
+from ...reports import CSVReport
 
 
 def datetime2date(obj, fieldname):
@@ -10,6 +14,15 @@ def datetime2date(obj, fieldname):
     if not datetime:
         return None
     return datetime.date().isoformat()
+
+
+def get_flattened(base, fielddict):
+    flattened_fields = []
+    for k, v in fielddict.items():
+        subfield_name = f"{base}__{k}"
+        flattened_fields.append({subfield_name: v})
+
+    return flattened_fields
 
 
 class BaseGeoJsonPagination(GeoJsonPagination):
@@ -31,11 +44,79 @@ class BaseReportSerializer(serializers.ModelSerializer):
         return datetime2date(obj, "updated_on")
 
 
-class ReportView(BaseAPIViewSet):
+class CSVReportMixin(BaseAPIViewSet):
+    """
+    Generates fields and data suitable for generating a csv using the base serializer
+    defined for the view, respecting field order and naming.
+    OneToOne relationships (nested serializer without many=True) are automatically flattened.
+    Custom manipulation can be specified via get_<fieldname> callable similar to SerializerMethodField appraoch.
+    """
+
+    csv_method_fields = []
+    file_prefix = ""
+
+    def get_fields(self):
+        serializer = self.get_serializer(many=True)
+        fields = serializer.child.get_fields()
+
+        flat_fields = []
+        for fieldname, field in fields.items():
+            if fieldname in self.csv_method_fields:
+                methodname = f"get_{fieldname}"
+                method = getattr(self, methodname)
+                expand_fields = [key for d in method() for key in d]
+                flat_fields.extend(expand_fields)
+            elif isinstance(field, serializers.Serializer):
+                related_fields = get_flattened(fieldname, field.get_fields())
+                related_field_keys = [key for f in related_fields for key in f]
+                flat_fields.extend(related_field_keys)
+            else:
+                flat_fields.append(fieldname)
+
+        return flat_fields
+
+    def get_data(self):
+        queryset = self.filter_queryset(self.get_queryset())
+        serializer = self.get_serializer(queryset, many=True)
+
+        data = []
+        for record in serializer.data:
+            rowdata = {}
+            for fieldname, value in record.items():
+                if fieldname in self.csv_method_fields:
+                    methodname = f"get_{fieldname}"
+                    method = getattr(self, methodname)
+                    fields = method(value)
+                elif isinstance(value, OrderedDict):
+                    fields = get_flattened(fieldname, value)
+                else:
+                    fields = [{fieldname: value}]
+
+                for field in fields:
+                    rowdata.update(field)
+
+            data.append(rowdata)
+
+        return data
+
+    def get_csv_response(self):
+        fields = self.get_fields()
+        data = self.get_data()
+        time_stamp = datetime.utcnow().strftime("%Y%m%d")
+        file_name = f"{self.file_prefix}-{time_stamp}.csv".lower()
+
+        report = CSVReport()
+        # assumes all fields present in all items
+        stream = report.stream(fields, data)
+
+        response = StreamingHttpResponse(stream, content_type="text/csv")
+        response["Content-Disposition"] = f'attachment; filename="{file_name}"'
+        return response
+
+
+class ReportView(CSVReportMixin, BaseAPIViewSet):
     http_method_names = [method.lower() for method in SAFE_METHODS]
-    # drf_label = ""
     serializer_class_geojson = None
-    serializer_class_csv = None
 
     @action(detail=False, methods=["get"])
     def json(self, request, *args, **kwargs):  # default, for completeness
@@ -47,14 +128,6 @@ class ReportView(BaseAPIViewSet):
         self.pagination_class = BaseGeoJsonPagination
         return self.list(request, *args, **kwargs)
 
-    # TODO: implement csv view
-    # @action(detail=False, methods=["get"])
-    # def csv(self, request, *args, **kwargs):
-    #
-    #     queryset = self.filter_queryset(self.get_queryset())
-    #     return csv_report.get_csv_response(
-    #         queryset,
-    #         self.serializer_class_csv,
-    #         # see about getting file_name_prefix from serializer_class_csv, inheriting from or same as serializer_class
-    #         file_name_prefix=file_name_prefix,
-    #     )
+    @action(detail=False, methods=["get"])
+    def csv(self, request, *args, **kwargs):
+        return self.get_csv_response()

@@ -376,6 +376,7 @@ class SurveyAnswerLikert(SurveyAnswer):
     class Meta:
         unique_together = ("assessment", "question")
         verbose_name = "Likert survey answer"
+        ordering = ["question__attribute__order", "question__number"]
 
     def __str__(self):
         return f"{self.assessment} {self.question}"

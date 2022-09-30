@@ -5,7 +5,7 @@ from rest_framework_gis.fields import GeometryField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
 from ..assessment import get_assessment_related_queryset
-from ...models import Assessment, ManagementArea, SurveyAnswerLikert
+from ...models import Assessment, ManagementArea, SurveyAnswerLikert, SurveyQuestionLikert
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
@@ -73,13 +73,7 @@ class AssessmentReportSerializer(BaseReportSerializer):
     )
     collection_method = serializers.CharField(source="get_collection_method_display")
     management_area = ManagementAreaReportSerializer()
-    survey_answer_likerts = serializers.SerializerMethodField()
-
-    def get_survey_answer_likerts(self, obj):
-        answer_likerts = obj.survey_answer_likerts.all().order_by(
-            "question__attribute__order", "question__number"
-        )
-        return SurveyAnswerLikertSerializer(answer_likerts, many=True).data
+    survey_answer_likerts = SurveyAnswerLikertSerializer(many=True)
 
     class Meta:
         model = Assessment
@@ -119,7 +113,7 @@ class AssessmentReportGeoSerializer(
     GeoFeatureModelSerializer, AssessmentReportSerializer
 ):
     polygon = GeometryField(
-        source="management_area.polygon", precision=settings.GEO_PRECISION
+        source="management_area.polygon", precision=settings.GEO_PRECISION, default=None
     )
 
     class Meta(AssessmentReportSerializer.Meta):
@@ -130,15 +124,49 @@ class AssessmentReportView(ReportView):
     ordering = ["name", "year"]
     serializer_class = AssessmentReportSerializer
     serializer_class_geojson = AssessmentReportGeoSerializer
+    csv_method_fields = ["survey_answer_likerts"]
+    file_prefix = "assessmentreport"
+    _question_likerts = None
     # TODO: add filters and search
     # filter_class = AssessmentFilterSet
     # search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
-    # TODO: optimize all report queries
     def get_queryset(self):
         return (
             get_assessment_related_queryset(self.request.user, Assessment)
             .select_related("management_area", "management_area__protected_area")
             .prefetch_related("assessment_flags")
         )
+
+    @property
+    def question_likerts(self):
+        if not self._question_likerts:
+            questions = SurveyQuestionLikert.objects.order_by("attribute__order", "number")
+            self._question_likerts = questions
+        return self._question_likerts
+
+    def get_answer_by_slug(self, answers, slug):
+        if answers:
+            for answer in answers:
+                if answer["question"] == slug:
+                    return answer
+        return None
+
+    def get_survey_answer_likerts(self, obj=None):
+        answers = []
+        for question in self.question_likerts:
+            choice_name = f"{question.key}__choice"
+            explanation_name = f"{question.key}__explanation"
+            choice_field = {choice_name: None}
+            explanation_field = {explanation_name: None}
+
+            answer = self.get_answer_by_slug(obj, question.key)
+            if answer:
+                choice_field[choice_name] = answer.get("choice")
+                explanation_field[explanation_name] = answer.get("explanation")
+
+            answers.append(choice_field)
+            answers.append(explanation_field)
+
+        return answers
