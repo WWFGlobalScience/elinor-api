@@ -5,7 +5,12 @@ from rest_framework_gis.fields import GeometryField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
 from ..assessment import get_assessment_related_queryset
-from ...models import Assessment, ManagementArea, SurveyAnswerLikert, SurveyQuestionLikert
+from ...models import (
+    Assessment,
+    ManagementArea,
+    SurveyAnswerLikert,
+    SurveyQuestionLikert,
+)
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
@@ -142,7 +147,9 @@ class AssessmentReportView(ReportView):
     @property
     def question_likerts(self):
         if not self._question_likerts:
-            questions = SurveyQuestionLikert.objects.order_by("attribute__order", "number")
+            questions = SurveyQuestionLikert.objects.order_by(
+                "attribute__order", "number"
+            )
             self._question_likerts = questions
         return self._question_likerts
 

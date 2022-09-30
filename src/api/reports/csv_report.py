@@ -11,7 +11,6 @@ class Echo(object):
 
 
 class CSVReport(BaseReport):
-
     def _flatten_record(self, record_dict):
         for k, v in record_dict.items():
             if isinstance(v, (list, set, tuple)):
@@ -29,7 +28,10 @@ class CSVReport(BaseReport):
             yield ""
         csv_buffer = Echo()
         csv_writer = csv.DictWriter(
-            csv_buffer, fieldnames=fields, extrasaction="ignore", quoting=csv.QUOTE_NONNUMERIC
+            csv_buffer,
+            fieldnames=fields,
+            extrasaction="ignore",
+            quoting=csv.QUOTE_NONNUMERIC,
         )
 
         yield csv_buffer.write(f"{','.join(fields)}\n")
@@ -39,7 +41,10 @@ class CSVReport(BaseReport):
     def generate(self, path, fields, data, *args, **kwargs):
         with open(path, "wb") as csvfile:
             csv_writer = csv.DictWriter(
-                csvfile, fieldnames=fields, extrasaction="ignore", quoting=csv.QUOTE_NONNUMERIC
+                csvfile,
+                fieldnames=fields,
+                extrasaction="ignore",
+                quoting=csv.QUOTE_NONNUMERIC,
             )
             csv_writer.writeheader()
             for flat_record in data:
