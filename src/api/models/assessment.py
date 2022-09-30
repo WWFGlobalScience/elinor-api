@@ -356,7 +356,9 @@ class SurveyQuestionLikert(SurveyQuestion):
 class SurveyAnswer(BaseModel):
     assessment_lookup = "assessment"
 
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
+    assessment = models.ForeignKey(
+        Assessment, related_name="survey_answer_likerts", on_delete=models.CASCADE
+    )
 
     class Meta:
         abstract = True
