@@ -64,7 +64,7 @@ class Assessment(BaseModel):
     )
     status = models.PositiveSmallIntegerField(choices=STATUSES, default=NOT_FINALIZED)
     data_policy = models.PositiveSmallIntegerField(
-        choices=DATA_POLICIES, default=PUBLIC
+        choices=DATA_POLICIES, default=PRIVATE
     )
     attributes = models.ManyToManyField(Attribute, blank=True)
     person_responsible = models.ForeignKey(
