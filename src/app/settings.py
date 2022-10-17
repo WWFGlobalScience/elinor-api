@@ -227,7 +227,7 @@ ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
 REST_AUTH_SERIALIZERS = {
-    "USER_DETAILS_SERIALIZER": "api.resources.base.UserSerializer",
+    "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
     "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
 }
 REST_AUTH_REGISTER_SERIALIZERS = {
