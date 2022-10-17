@@ -356,7 +356,9 @@ class SurveyQuestionLikert(SurveyQuestion):
 class SurveyAnswer(BaseModel):
     assessment_lookup = "assessment"
 
-    assessment = models.ForeignKey(Assessment, on_delete=models.CASCADE)
+    assessment = models.ForeignKey(
+        Assessment, related_name="survey_answer_likerts", on_delete=models.CASCADE
+    )
 
     class Meta:
         abstract = True
@@ -374,6 +376,7 @@ class SurveyAnswerLikert(SurveyAnswer):
     class Meta:
         unique_together = ("assessment", "question")
         verbose_name = "Likert survey answer"
+        ordering = ["question__attribute__order", "question__number"]
 
     def __str__(self):
         return f"{self.assessment} {self.question}"

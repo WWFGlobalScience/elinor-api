@@ -135,9 +135,18 @@ class ChoiceFilterSet(BaseAPIFilterSet):
     name = CharFilter()
 
 
+class DefaultOrderingFilter(OrderingFilter):
+    # ensure unique pagination when not enough ordering fields are specified; requires "id" field
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view) or []
+        if "id" not in ordering:
+            ordering.append("id")
+        return ordering
+
+
 class BaseAPIViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultPagination
-    filter_backends = (DjangoFilterBackend, OrderingFilter, SearchFilter)
+    filter_backends = (DjangoFilterBackend, DefaultOrderingFilter, SearchFilter)
 
 
 class BaseChoiceViewSet(BaseAPIViewSet):
@@ -278,7 +287,7 @@ class UserFilterSet(FilterSet):
 
 
 class UserViewSet(BaseAPIViewSet):
-    http_method_names = [option.lower() for option in permissions.SAFE_METHODS]
+    http_method_names = [method.lower() for method in permissions.SAFE_METHODS]
     permission_classes = [
         AuthenticatedAndReadOnly,
     ]
