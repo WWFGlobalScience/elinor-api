@@ -3,6 +3,7 @@ from django.contrib.gis.db import models
 from django.core.exceptions import ValidationError
 from django.db.models import Q
 from django.utils.translation import ugettext_lazy as _
+from modeltranslation.fields import TranslationField
 from .base import (
     LIKERT_CHOICES,
     AssessmentVersion,
@@ -142,46 +143,56 @@ class Assessment(BaseModel):
         self._percent_complete = round(100 * (answered / total))
         return self._percent_complete
 
+    def _check_nulls(self):
+        #  Disallow publishing if any fields on the model itself are null.
+        #  Does not check non-nullable fields with default values or char/text fields with empty strings.
+        nullfields = []
+        for field in self._meta.get_fields():
+            if (
+                not (field.is_relation or isinstance(field, TranslationField))
+                or field.one_to_one
+            ):
+                value = getattr(self, field.name)
+                if (
+                    value is None
+                    and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS
+                ):
+                    nullfields.append(field.name)
+        if nullfields:
+            raise ValidationError(
+                {f: _("May not be published unanswered") for f in nullfields}
+            )
+
+    def _check_attributes(self):
+        # Ensure at least one attribute is associated with assessment
+        attributes = self.attributes.all()
+        if attributes.count() < 1:
+            raise ValidationError(
+                "May not be published without at least one associated attribute"
+            )
+
+    def _check_questions(self):
+        # Ensure all questions for attributes associated with assessment are answered
+        #  Doublecheck required attributes even though they are automatically added by admin and viewset
+        answered_question_ids = self.survey_answer_likerts.values_list(
+            "question", flat=True
+        )
+        answered_questions = SurveyQuestionLikert.objects.filter(
+            pk__in=answered_question_ids
+        )
+        missing_questions = self.required_questions.difference(answered_questions)
+        if missing_questions:
+            questions_string = ",".join([q.key for q in missing_questions])
+            raise ValidationError(
+                f"May not be published without answers to these questions: {questions_string}"
+            )
+
     def clean(self):
         # Publishing checks
         if self.status == self.FINALIZED:
-            #  Disallow publishing if any fields on the model itself are null.
-            #  Does not check non-nullable fields with default values or char/text fields with empty strings.
-            nullfields = []
-            for field in self._meta.get_fields():
-                if not field.is_relation or field.one_to_one:
-                    value = getattr(self, field.name)
-                    if (
-                        value is None
-                        and field.name not in self.ALLOWED_PUBLISHED_NULLFIELDS
-                    ):
-                        nullfields.append(field.name)
-            if nullfields:
-                raise ValidationError(
-                    {f: _("May not be published unanswered") for f in nullfields}
-                )
-
-            # Ensure at least one attribute is associated with assessment
-            attributes = self.attributes.all()
-            if attributes.count() < 1:
-                raise ValidationError(
-                    "May not be published without at least one associated attribute"
-                )
-
-            # Ensure all questions for attributes associated with assessment are answered
-            #  Doublecheck required attributes even though they are automatically added by admin and viewset
-            answered_question_ids = self.surveyanswerlikert_set.values_list(
-                "question", flat=True
-            )
-            answered_questions = SurveyQuestionLikert.objects.filter(
-                pk__in=answered_question_ids
-            )
-            missing_questions = self.required_questions.difference(answered_questions)
-            if missing_questions:
-                questions_string = ",".join([q.key for q in missing_questions])
-                raise ValidationError(
-                    f"May not be published without answers to these questions: {questions_string}"
-                )
+            self._check_nulls()
+            self._check_attributes()
+            self._check_questions()
 
     def save(self, *args, **kwargs):
         self.full_clean()

@@ -104,12 +104,14 @@ class ManagementAreaFilterSet(BaseAPIFilterSet):
 
 
 class ManagementAreaViewSet(BaseAPIViewSet):
-    queryset = ManagementArea.objects.all()
     ordering = ["name", "version_date"]
     serializer_class = ManagementAreaSerializer
     filter_class = ManagementAreaFilterSet
     search_fields = ["name", "protected_area__name", "management_authority__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
+
+    def get_queryset(self):
+        return ManagementArea.objects.all()
 
     @action(methods=["GET"], detail=False)
     def countries(self, request):
@@ -142,9 +144,11 @@ class ManagementAreaZoneFilterSet(BaseAPIFilterSet):
 
 
 class ManagementAreaZoneViewSet(BaseAPIViewSet):
-    queryset = ManagementAreaZone.objects.all()
     ordering = ["name", "management_area__name"]
     serializer_class = ManagementAreaZoneSerializer
     filter_class = ManagementAreaZoneFilterSet
     search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
+
+    def get_queryset(self):
+        return ManagementAreaZone.objects.all()

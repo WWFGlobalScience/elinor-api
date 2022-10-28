@@ -12,6 +12,7 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
+from modeltranslation.fields import TranslationField
 from rest_framework import permissions, routers, serializers, viewsets
 from rest_framework.decorators import (
     api_view,
@@ -109,6 +110,14 @@ class BaseAPISerializer(serializers.ModelSerializer):
     created_by = serializers.PrimaryKeyRelatedField(read_only=True)
     updated_on = serializers.DateTimeField(read_only=True)
     updated_by = serializers.PrimaryKeyRelatedField(read_only=True)
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
+            modelfields = self.Meta.model._meta.fields
+            for field in modelfields:
+                if isinstance(field, TranslationField):
+                    self.fields.pop(field.name)
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -291,11 +300,13 @@ class UserViewSet(BaseAPIViewSet):
     permission_classes = [
         AuthenticatedAndReadOnly,
     ]
-    queryset = User.objects.all()
     ordering = ["username"]
     serializer_class = UserSerializer
     filter_class = UserFilterSet
     search_fields = ["username", "first_name", "last_name"]
+
+    def get_queryset(self):
+        return User.objects.all()
 
 
 @api_view(permissions.SAFE_METHODS)
@@ -321,10 +332,13 @@ class AttributeFilterSet(BaseAPIFilterSet):
 
 
 class AttributeViewSet(BaseChoiceViewSet):
-    queryset = Attribute.objects.all()
     serializer_class = AttributeSerializer
     filter_class = AttributeFilterSet
     permission_classes = [ReadOnly]
+    ordering = ["order", "name"]
+
+    def get_queryset(self):
+        return Attribute.objects.all()
 
 
 class DocumentSerializer(BaseAPISerializer):
@@ -344,10 +358,12 @@ class DocumentFilterSet(BaseAPIFilterSet):
 
 
 class DocumentViewSet(BaseAPIViewSet):
-    queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     filter_class = DocumentFilterSet
     permission_classes = [ReadOnly]
+
+    def get_queryset(self):
+        return Document.objects.all()
 
 
 class GovernanceTypeSerializer(BaseAPISerializer):
@@ -357,8 +373,10 @@ class GovernanceTypeSerializer(BaseAPISerializer):
 
 
 class GovernanceTypeViewSet(BaseChoiceViewSet):
-    queryset = GovernanceType.objects.all()
     serializer_class = GovernanceTypeSerializer
+
+    def get_queryset(self):
+        return GovernanceType.objects.all()
 
 
 class ManagementAuthoritySerializer(BaseAPISerializer):
@@ -368,8 +386,10 @@ class ManagementAuthoritySerializer(BaseAPISerializer):
 
 
 class ManagementAuthorityViewSet(BaseChoiceViewSet):
-    queryset = ManagementAuthority.objects.all()
     serializer_class = ManagementAuthoritySerializer
+
+    def get_queryset(self):
+        return ManagementAuthority.objects.all()
 
 
 class OrganizationSerializer(BaseAPISerializer):
@@ -379,8 +399,10 @@ class OrganizationSerializer(BaseAPISerializer):
 
 
 class OrganizationViewSet(BaseChoiceViewSet):
-    queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
+
+    def get_queryset(self):
+        return Organization.objects.all()
 
 
 class ProtectedAreaSerializer(BaseAPISerializer):
@@ -390,9 +412,11 @@ class ProtectedAreaSerializer(BaseAPISerializer):
 
 
 class ProtectedAreaViewSet(BaseChoiceViewSet):
-    queryset = ProtectedArea.objects.all()
     serializer_class = ProtectedAreaSerializer
     filter_class = ChoiceFilterSet
+
+    def get_queryset(self):
+        return ProtectedArea.objects.all()
 
 
 class RegionSerializer(CountryFieldMixin, BaseAPISerializer):
@@ -410,9 +434,11 @@ class RegionFilterSet(ChoiceFilterSet):
 
 
 class RegionViewSet(BaseChoiceViewSet):
-    queryset = Region.objects.all()
     serializer_class = RegionSerializer
     filter_class = RegionFilterSet
+
+    def get_queryset(self):
+        return Region.objects.all()
 
 
 class StakeholderGroupSerializer(BaseAPISerializer):
@@ -422,8 +448,10 @@ class StakeholderGroupSerializer(BaseAPISerializer):
 
 
 class StakeholderGroupViewSet(BaseChoiceViewSet):
-    queryset = StakeholderGroup.objects.all()
     serializer_class = StakeholderGroupSerializer
+
+    def get_queryset(self):
+        return StakeholderGroup.objects.all()
 
 
 class SupportSourceSerializer(BaseAPISerializer):
@@ -433,5 +461,7 @@ class SupportSourceSerializer(BaseAPISerializer):
 
 
 class SupportSourceViewSet(BaseChoiceViewSet):
-    queryset = SupportSource.objects.all()
     serializer_class = SupportSourceSerializer
+
+    def get_queryset(self):
+        return SupportSource.objects.all()

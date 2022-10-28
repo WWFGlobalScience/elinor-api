@@ -215,11 +215,13 @@ class AssessmentFlagFilterSet(BaseAPIFilterSet):
 
 
 class AssessmentFlagViewSet(BaseAPIViewSet):
-    queryset = AssessmentFlag.objects.all()
     serializer_class = AssessmentFlagSerializer
     filter_class = AssessmentFlagFilterSet
     search_fields = ["assessment_name", "reporter__username"]
     permission_classes = [ReadOnlyOrAuthenticatedCreate]
+
+    def get_queryset(self):
+        return AssessmentFlag.objects.all()
 
 
 class CollaboratorSerializer(BaseAPISerializer):
@@ -308,10 +310,12 @@ class SurveyQuestionLikertFilterSet(BaseAPIFilterSet):
 
 
 class SurveyQuestionLikertViewSet(BaseAPIViewSet):
-    queryset = SurveyQuestionLikert.objects.all()
     serializer_class = SurveyQuestionLikertSerializer
     filter_class = SurveyQuestionLikertFilterSet
     permission_classes = [ReadOnly]
+
+    def get_queryset(self):
+        return SurveyQuestionLikert.objects.all()
 
 
 class SurveyAnswerLikertSerializer(BaseAPISerializer):
