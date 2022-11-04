@@ -7,6 +7,7 @@ from django.contrib.gis.admin import OSMGeoAdmin
 from django.http import HttpResponse
 from django.urls import reverse
 from django.utils.html import format_html
+from modeltranslation.admin import TranslationAdmin
 from ..models.base import *
 
 UserModel = get_user_model()
@@ -192,53 +193,54 @@ class CountryListFilter(admin.SimpleListFilter):
 
 
 @admin.register(AssessmentVersion)
-class AssessmentVersionAdmin(BaseAdmin):
+class AssessmentVersionAdmin(BaseAdmin, TranslationAdmin):
     list_display = ["year", "major_version", "updated_on"] + BaseAdmin.list_display
 
 
 @admin.register(Attribute)
-class AttributeAdmin(BaseChoiceAdmin):
+class AttributeAdmin(BaseChoiceAdmin, TranslationAdmin):
     list_display = ["name", "order", "required"]
+    ordering = ["order", "name"]
 
 
 @admin.register(Document)
-class DocumentAdmin(BaseAdmin):
+class DocumentAdmin(BaseAdmin, TranslationAdmin):
     list_display = ["name", "version", "publication_date"] + BaseAdmin.list_display
     list_filter = ("version",)
     ordering = ["-version", "name"]
 
 
 @admin.register(GovernanceType)
-class GovernanceTypeAdmin(BaseChoiceAdmin):
+class GovernanceTypeAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
 
 
 @admin.register(ManagementAuthority)
-class ManagementAuthorityAdmin(BaseChoiceAdmin):
+class ManagementAuthorityAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
 
 
 @admin.register(Organization)
-class OrganizationAdmin(BaseChoiceAdmin):
+class OrganizationAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
 
 
 @admin.register(ProtectedArea)
-class ProtectedAreaAdmin(BaseChoiceAdmin):
+class ProtectedAreaAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
 
 
 @admin.register(Region)
-class RegionAdmin(BaseChoiceAdmin):
+class RegionAdmin(BaseChoiceAdmin, TranslationAdmin):
     list_display = ["name", country_flag]
     list_filter = (CountryListFilter,)
 
 
 @admin.register(StakeholderGroup)
-class StakeholderGroupAdmin(BaseChoiceAdmin):
+class StakeholderGroupAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
 
 
 @admin.register(SupportSource)
-class SupportSourceAdmin(BaseChoiceAdmin):
+class SupportSourceAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass

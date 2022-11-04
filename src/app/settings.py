@@ -41,6 +41,7 @@ if ENVIRONMENT not in ("prod", "dev"):
 # Application definition
 
 INSTALLED_APPS = [
+    "modeltranslation",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -77,6 +78,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
 ]
 
 ROOT_URLCONF = "app.urls"
@@ -140,6 +142,14 @@ TIME_ZONE = "UTC"
 USE_I18N = True
 USE_L10N = True
 USE_TZ = True
+
+gettext = lambda s: s
+LANGUAGES = (
+    ('en', gettext('English')),
+    ('es', gettext('Español')),
+    ('id', gettext('Bahasa Indonesia')),
+    ('sw', gettext('Kiswahili')),
+)
 
 
 # Static files (CSS, JavaScript, Images)

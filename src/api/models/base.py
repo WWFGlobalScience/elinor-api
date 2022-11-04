@@ -18,6 +18,13 @@ LIKERT_CHOICES = (
 )
 
 
+def latest_version():
+    latest_version = AssessmentVersion.objects.order_by(
+        "-year", "-major_version"
+    ).first()
+    return latest_version
+
+
 class BaseModel(models.Model):
     created_on = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(
@@ -119,10 +126,15 @@ class Attribute(BaseChoiceModel):
     order = models.PositiveSmallIntegerField(unique=True)
     description = models.TextField(blank=True)
 
+    class Meta:
+        ordering = ["order", "name"]
+
 
 class Document(BaseModel):
     name = models.CharField(max_length=255)
-    version = models.ForeignKey(AssessmentVersion, on_delete=models.PROTECT)
+    version = models.ForeignKey(
+        AssessmentVersion, on_delete=models.PROTECT, default=latest_version
+    )
     publication_date = models.DateField()
     file = models.FileField(upload_to="upload")
     description = models.TextField(blank=True)

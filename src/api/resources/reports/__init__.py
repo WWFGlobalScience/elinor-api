@@ -1,6 +1,7 @@
 from collections import OrderedDict
 from datetime import datetime
 from django.http import StreamingHttpResponse
+from django.utils import translation
 from rest_framework import serializers
 from rest_framework.decorators import action
 from rest_framework.permissions import SAFE_METHODS
@@ -103,7 +104,8 @@ class CSVReportMixin(BaseAPIViewSet):
         fields = self.get_fields()
         data = self.get_data()
         time_stamp = datetime.utcnow().strftime("%Y%m%d")
-        file_name = f"{self.file_prefix}-{time_stamp}.csv".lower()
+        lang = translation.get_language()
+        file_name = f"{self.file_prefix}-{time_stamp}-{lang}.csv".lower()
 
         report = CSVReport()
         # assumes all fields present in all items

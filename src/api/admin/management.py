@@ -1,4 +1,5 @@
 from django.contrib import admin
+from modeltranslation.admin import TranslationAdmin
 from .base import BaseAdmin, CountryListFilter, country_flag, linkify
 from ..models.management import *
 
@@ -9,7 +10,7 @@ class ManagementAreaZoneInline(admin.StackedInline):
 
 
 @admin.register(ManagementArea)
-class ManagementAreaAdmin(BaseAdmin):
+class ManagementAreaAdmin(BaseAdmin, TranslationAdmin):
     list_display = [
         "name",
         "version_date",
@@ -23,7 +24,7 @@ class ManagementAreaAdmin(BaseAdmin):
 
 
 @admin.register(ManagementAreaZone)
-class ManagementAreaZoneAdmin(BaseAdmin):
+class ManagementAreaZoneAdmin(BaseAdmin, TranslationAdmin):
     list_display = ["name", "access_level"] + BaseAdmin.list_display
     search_fields = ["name"]
     list_filter = ("access_level",)
