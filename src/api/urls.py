@@ -26,10 +26,12 @@ from .resources.assessment import (
     SurveyQuestionLikertViewSet,
     SurveyAnswerLikertViewSet,
 )
+from .resources.reports.assessment import AssessmentReportView
 
 
 router = ElinorDefaultRouter()
 
+# Base resources
 router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"attributes", AttributeViewSet, "attribute")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")
@@ -52,6 +54,9 @@ router.register(
 )
 router.register(r"surveyanswerlikerts", SurveyAnswerLikertViewSet, "surveyanswerlikert")
 router.register(r"users", UserViewSet, "user")
+
+# Reporting resources (read-only)
+router.register(f"reports/assessments", AssessmentReportView, "assessmentreport")
 
 api_urls = router.urls + [
     path("assessmentversion", assessmentversion, name="assessmentversion"),

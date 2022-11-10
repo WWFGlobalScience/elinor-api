@@ -28,21 +28,6 @@ class ManagementArea(BaseModel):
         (INTERNATIONAL, _(INTERNATIONAL)),
     )
 
-    OPEN_ACCESS = 90
-    PARTIALLY_RESTRICTED = 50
-    FULLY_RESTRICTED = 10
-    ACCESS_CHOICES = (
-        (OPEN_ACCESS, _("Open access (open for extraction and entering)")),
-        (PARTIALLY_RESTRICTED, _("Fully restricted access (total extraction ban)")),
-        (
-            FULLY_RESTRICTED,
-            _(
-                "Partially Restricted (e.g., periodic closures, restriction by use type, restriction by "
-                "activity type, species restrictions, gear restrictions, etc.)"
-            ),
-        ),
-    )
-
     parent = models.ForeignKey(
         "self",
         on_delete=models.SET_NULL,

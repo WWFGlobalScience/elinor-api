@@ -41,6 +41,7 @@ if ENVIRONMENT not in ("prod", "dev"):
 # Application definition
 
 INSTALLED_APPS = [
+    "modeltranslation",
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -77,6 +78,7 @@ MIDDLEWARE = [
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "django.middleware.locale.LocaleMiddleware",
 ]
 
 ROOT_URLCONF = "app.urls"
@@ -141,6 +143,14 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
+gettext = lambda s: s
+LANGUAGES = (
+    ('en', gettext('English')),
+    ('es', gettext('Español')),
+    ('id', gettext('Bahasa Indonesia')),
+    ('sw', gettext('Kiswahili')),
+)
+
 
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/3.2/howto/static-files/
@@ -156,6 +166,10 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # App settings
 
+APPNAME = "elinor"
+SITE_ID = 1
+GEO_PRECISION = 6  # to nearest 10 cm
+
 REST_FRAMEWORK = {
     "COERCE_DECIMAL_TO_STRING": False,
     "DEFAULT_AUTHENTICATION_CLASSES": (
@@ -170,6 +184,9 @@ REST_FRAMEWORK = {
     ),
     "EXCEPTION_HANDLER": "api.resources.api_exception_handler",
 }
+
+CORS_ORIGIN_ALLOW_ALL = True
+CORS_REPLACE_HTTPS_REFERER = True
 
 AWS_BACKUP_BUCKET = os.environ.get("AWS_BACKUP_BUCKET")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
@@ -188,8 +205,8 @@ EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
 DEFAULT_FROM_EMAIL = "Elinor <{}>".format(EMAIL_HOST_USER)
 EMAIL_CONTACT = os.environ.get("EMAIL_CONTACT")
-CORS_ORIGIN_ALLOW_ALL = True
-CORS_REPLACE_HTTPS_REFERER = True
+DRF_RECAPTCHA_SECRET_KEY = os.environ.get("DRF_RECAPTCHA_SECRET_KEY")
+# DRF_RECAPTCHA_TESTING = True
 
 LOGGING = {
     "version": 1,
@@ -211,15 +228,16 @@ LOGGING = {
     },
 }
 
-APPNAME = "elinor"
-SITE_ID = 1
+
+# Authentication
+
 REST_SESSION_LOGIN = False
 ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
 REST_AUTH_SERIALIZERS = {
-    "USER_DETAILS_SERIALIZER": "api.resources.base.UserSerializer",
+    "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
     "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
 }
 REST_AUTH_REGISTER_SERIALIZERS = {
@@ -233,5 +251,3 @@ AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
 ]
 
-DRF_RECAPTCHA_SECRET_KEY = os.environ.get("DRF_RECAPTCHA_SECRET_KEY")
-# DRF_RECAPTCHA_TESTING = True

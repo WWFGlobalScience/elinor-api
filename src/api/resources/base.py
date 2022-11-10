@@ -1,5 +1,6 @@
 from collections import OrderedDict
 from django.contrib.auth import get_user_model
+from django.core.exceptions import ObjectDoesNotExist
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -11,12 +12,14 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
+from modeltranslation.fields import TranslationField
 from rest_framework import permissions, routers, serializers, viewsets
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
     permission_classes,
 )
+from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.response import Response
@@ -37,6 +40,12 @@ from ..permissions import (
     ReadOnly,
     ReadOnlyOrAuthenticatedCreate,
 )
+
+try:
+    from allauth.account.utils import send_email_confirmation, setup_user_email
+    from allauth.account.models import EmailAddress
+except ImportError:
+    raise ImportError("allauth needs to be added to INSTALLED_APPS.")
 
 
 User = get_user_model()
@@ -102,6 +111,14 @@ class BaseAPISerializer(serializers.ModelSerializer):
     updated_on = serializers.DateTimeField(read_only=True)
     updated_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
+            modelfields = self.Meta.model._meta.fields
+            for field in modelfields:
+                if isinstance(field, TranslationField):
+                    self.fields.pop(field.name)
+
     def create(self, validated_data):
         request = self.context.get("request")
         if request and hasattr(request, "user"):
@@ -127,9 +144,18 @@ class ChoiceFilterSet(BaseAPIFilterSet):
     name = CharFilter()
 
 
+class DefaultOrderingFilter(OrderingFilter):
+    # ensure unique pagination when not enough ordering fields are specified; requires "id" field
+    def get_ordering(self, request, queryset, view):
+        ordering = super().get_ordering(request, queryset, view) or []
+        if "id" not in ordering:
+            ordering.append("id")
+        return ordering
+
+
 class BaseAPIViewSet(viewsets.ModelViewSet):
     pagination_class = StandardResultPagination
-    filter_backends = (DjangoFilterBackend, OrderingFilter, SearchFilter)
+    filter_backends = (DjangoFilterBackend, DefaultOrderingFilter, SearchFilter)
 
 
 class BaseChoiceViewSet(BaseAPIViewSet):
@@ -153,7 +179,6 @@ class ReadOnlyChoiceSerializer(serializers.Serializer):
 
 
 class UserSerializer(BaseAPISerializer):
-    last_login = serializers.ReadOnlyField()
     affiliation = serializers.PrimaryKeyRelatedField(
         allow_null=True,
         queryset=Organization.objects.all(),
@@ -174,6 +199,22 @@ class UserSerializer(BaseAPISerializer):
         source="profile.updated_by",
     )
 
+    class Meta:
+        model = User
+        exclude = [
+            "groups",
+            "user_permissions",
+            "password",
+            "is_staff",
+            "is_active",
+            "email",
+        ]
+        read_only_fields = ["date_joined", "is_superuser"]
+
+
+class SelfSerializer(UserSerializer):
+    last_login = serializers.ReadOnlyField()
+
     def _create_or_update_profile(self, user, profile_data, create=False):
         current_user = user
         request = self.context.get("request")
@@ -191,14 +232,30 @@ class UserSerializer(BaseAPISerializer):
         return user
 
     def create(self, validated_data):
-        profile_data = validated_data.pop("profile", None)
-        user = super().create(validated_data)
-        return self._create_or_update_profile(user, profile_data, True)
+        raise MethodNotAllowed("POST")
 
     def update(self, instance, validated_data):
         profile_data = validated_data.pop("profile", None)
+        # email: validation already applied; saved to both user and EmailAddress
+        incoming_email = validated_data.get("email")
+        resetup_email = False
+        if incoming_email and incoming_email != instance.email:
+            resetup_email = True
+
         user = super().update(instance, validated_data)
-        return self._create_or_update_profile(user, profile_data)
+        user = self._create_or_update_profile(user, profile_data)
+
+        if resetup_email:
+            request = self.context.get("request")
+            EmailAddress.objects.filter(user=user).delete()
+            setup_user_email(request, user, [])
+            send_email_confirmation(request, user, False, incoming_email)
+            try:
+                request.user.auth_token.delete()
+            except (AttributeError, ObjectDoesNotExist):
+                pass
+
+        return user
 
     class Meta:
         model = User
@@ -208,7 +265,6 @@ class UserSerializer(BaseAPISerializer):
             "password",
             "is_staff",
             "is_active",
-            "email",
         ]
         read_only_fields = ["date_joined", "is_superuser"]
 
@@ -240,15 +296,17 @@ class UserFilterSet(FilterSet):
 
 
 class UserViewSet(BaseAPIViewSet):
-    http_method_names = [option.lower() for option in permissions.SAFE_METHODS]
+    http_method_names = [method.lower() for method in permissions.SAFE_METHODS]
     permission_classes = [
         AuthenticatedAndReadOnly,
     ]
-    queryset = User.objects.all()
     ordering = ["username"]
     serializer_class = UserSerializer
     filter_class = UserFilterSet
     search_fields = ["username", "first_name", "last_name"]
+
+    def get_queryset(self):
+        return User.objects.all()
 
 
 @api_view(permissions.SAFE_METHODS)
@@ -274,10 +332,13 @@ class AttributeFilterSet(BaseAPIFilterSet):
 
 
 class AttributeViewSet(BaseChoiceViewSet):
-    queryset = Attribute.objects.all()
     serializer_class = AttributeSerializer
     filter_class = AttributeFilterSet
     permission_classes = [ReadOnly]
+    ordering = ["order", "name"]
+
+    def get_queryset(self):
+        return Attribute.objects.all()
 
 
 class DocumentSerializer(BaseAPISerializer):
@@ -297,10 +358,12 @@ class DocumentFilterSet(BaseAPIFilterSet):
 
 
 class DocumentViewSet(BaseAPIViewSet):
-    queryset = Document.objects.all()
     serializer_class = DocumentSerializer
     filter_class = DocumentFilterSet
     permission_classes = [ReadOnly]
+
+    def get_queryset(self):
+        return Document.objects.all()
 
 
 class GovernanceTypeSerializer(BaseAPISerializer):
@@ -310,8 +373,10 @@ class GovernanceTypeSerializer(BaseAPISerializer):
 
 
 class GovernanceTypeViewSet(BaseChoiceViewSet):
-    queryset = GovernanceType.objects.all()
     serializer_class = GovernanceTypeSerializer
+
+    def get_queryset(self):
+        return GovernanceType.objects.all()
 
 
 class ManagementAuthoritySerializer(BaseAPISerializer):
@@ -321,8 +386,10 @@ class ManagementAuthoritySerializer(BaseAPISerializer):
 
 
 class ManagementAuthorityViewSet(BaseChoiceViewSet):
-    queryset = ManagementAuthority.objects.all()
     serializer_class = ManagementAuthoritySerializer
+
+    def get_queryset(self):
+        return ManagementAuthority.objects.all()
 
 
 class OrganizationSerializer(BaseAPISerializer):
@@ -332,8 +399,10 @@ class OrganizationSerializer(BaseAPISerializer):
 
 
 class OrganizationViewSet(BaseChoiceViewSet):
-    queryset = Organization.objects.all()
     serializer_class = OrganizationSerializer
+
+    def get_queryset(self):
+        return Organization.objects.all()
 
 
 class ProtectedAreaSerializer(BaseAPISerializer):
@@ -343,9 +412,11 @@ class ProtectedAreaSerializer(BaseAPISerializer):
 
 
 class ProtectedAreaViewSet(BaseChoiceViewSet):
-    queryset = ProtectedArea.objects.all()
     serializer_class = ProtectedAreaSerializer
     filter_class = ChoiceFilterSet
+
+    def get_queryset(self):
+        return ProtectedArea.objects.all()
 
 
 class RegionSerializer(CountryFieldMixin, BaseAPISerializer):
@@ -363,9 +434,11 @@ class RegionFilterSet(ChoiceFilterSet):
 
 
 class RegionViewSet(BaseChoiceViewSet):
-    queryset = Region.objects.all()
     serializer_class = RegionSerializer
     filter_class = RegionFilterSet
+
+    def get_queryset(self):
+        return Region.objects.all()
 
 
 class StakeholderGroupSerializer(BaseAPISerializer):
@@ -375,8 +448,10 @@ class StakeholderGroupSerializer(BaseAPISerializer):
 
 
 class StakeholderGroupViewSet(BaseChoiceViewSet):
-    queryset = StakeholderGroup.objects.all()
     serializer_class = StakeholderGroupSerializer
+
+    def get_queryset(self):
+        return StakeholderGroup.objects.all()
 
 
 class SupportSourceSerializer(BaseAPISerializer):
@@ -386,5 +461,7 @@ class SupportSourceSerializer(BaseAPISerializer):
 
 
 class SupportSourceViewSet(BaseChoiceViewSet):
-    queryset = SupportSource.objects.all()
     serializer_class = SupportSourceSerializer
+
+    def get_queryset(self):
+        return SupportSource.objects.all()

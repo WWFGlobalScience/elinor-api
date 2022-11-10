@@ -1,4 +1,5 @@
 from django.contrib import admin
+from modeltranslation.admin import TranslationAdmin
 from .base import BaseAdmin
 from ..models.assessment import *
 from ..utils.assessment import enforce_required_attributes, log_assessment_change
@@ -33,7 +34,7 @@ class AssessmentChangeInline(admin.TabularInline):
 
 
 @admin.register(Assessment)
-class AssessmentAdmin(BaseAdmin):
+class AssessmentAdmin(BaseAdmin, TranslationAdmin):
     list_display = [
         "name",
         "status",
@@ -115,10 +116,10 @@ class AssessmentFlagAdmin(BaseAdmin):
 
 
 @admin.register(SurveyQuestionLikert)
-class SurveyQuestionLikertAdmin(BaseAdmin):
+class SurveyQuestionLikertAdmin(BaseAdmin, TranslationAdmin):
     list_display = ["key", "attribute", "number"] + BaseAdmin.list_display
 
 
 @admin.register(SurveyAnswerLikert)
-class SurveyAnswerLikertAdmin(BaseAdmin):
+class SurveyAnswerLikertAdmin(BaseAdmin, TranslationAdmin):
     list_display = ["question", "assessment", "choice"] + BaseAdmin.list_display
