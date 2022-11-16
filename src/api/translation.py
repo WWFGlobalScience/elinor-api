@@ -79,4 +79,4 @@ class SurveyAnswerLikertTranslationOptions(TranslationOptions):
 
 @register(SurveyQuestionLikert)
 class SurveyQuestionLikertTranslationOptions(TranslationOptions):
-    fields = ("dontknow_10", "poor_20", "average_30", "good_40", "excellent_50")
+    fields = ("text", "rationale", "information", "guidance", "dontknow_10", "poor_20", "average_30", "good_40", "excellent_50")
