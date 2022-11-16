@@ -78,6 +78,10 @@ class CSVReportMixin(BaseAPIViewSet):
 
     def get_data(self):
         queryset = self.filter_queryset(self.get_queryset())
+        lookup_url_kwarg = self.lookup_url_kwarg or self.lookup_field
+        if lookup_url_kwarg in self.kwargs:
+            filter_kwargs = {self.lookup_field: self.kwargs[lookup_url_kwarg]}
+            queryset = queryset.filter(**filter_kwargs)
         serializer = self.get_serializer(queryset, many=True)
 
         data = []
@@ -132,4 +136,8 @@ class ReportView(CSVReportMixin, BaseAPIViewSet):
 
     @action(detail=False, methods=["get"])
     def csv(self, request, *args, **kwargs):
+        return self.get_csv_response()
+
+    @action(detail=True, methods=["get"])
+    def csv_detail(self, request, *args, **kwargs):
         return self.get_csv_response()
