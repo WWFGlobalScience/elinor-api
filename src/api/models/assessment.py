@@ -105,6 +105,18 @@ class Assessment(BaseModel):
     count_indigenous = models.PositiveSmallIntegerField(
         default=0, verbose_name=_("indigenous leader count")
     )
+    count_gender_female = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("female count")
+    )
+    count_gender_male = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("male count")
+    )
+    count_gender_nonbinary = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("non-binary count")
+    )
+    count_gender_prefer_not_say = models.PositiveSmallIntegerField(
+        default=0, verbose_name=_("prefer not to declare gender count")
+    )
     consent_given = models.BooleanField(default=False)
     consent_given_written = models.BooleanField(default=False)
     management_plan_file = models.FileField(upload_to="upload", blank=True, null=True)
