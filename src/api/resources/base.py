@@ -22,6 +22,7 @@ from rest_framework.decorators import (
 from rest_framework.exceptions import MethodNotAllowed
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from ..models import (
     AssessmentVersion,
@@ -50,6 +51,13 @@ except ImportError:
 
 User = get_user_model()
 user_choice_qs = User.objects.order_by("username")
+
+
+@api_view(['GET', 'HEAD', 'OPTIONS'])
+@authentication_classes([])
+@permission_classes((AllowAny,))
+def health(request):
+    return Response("ok")
 
 
 class APIRootView(routers.APIRootView):
