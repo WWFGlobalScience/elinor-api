@@ -1,5 +1,7 @@
 # Elinor API
 
+[![Deploy app to AWS Elastic Beanstalk](https://github.com/WWFGlobalScience/elinor-api/actions/workflows/deploy.yml/badge.svg)](https://github.com/WWFGlobalScience/elinor-api/actions/workflows/deploy.yml)
+
 ## Stack
 
 - [Django](https://www.djangoproject.com/) (Python)
