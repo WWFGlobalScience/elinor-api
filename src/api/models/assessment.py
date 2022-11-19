@@ -145,7 +145,7 @@ class Assessment(BaseModel):
         if hasattr(self, "_percent_complete"):
             return self._percent_complete
 
-        answered = self.surveyanswerlikert_set.filter(
+        answered = self.survey_answer_likerts.filter(
             Q(question__attribute__in=self.attributes.all())
             | Q(question__attribute__required=True)
         ).count()
