@@ -1,5 +1,21 @@
 from modeltranslation.translator import register, TranslationOptions
-from .models import Assessment, AssessmentVersion, Attribute, Document, GovernanceType, ManagementArea, ManagementAreaZone, ManagementAuthority, Organization, ProtectedArea, Region, StakeholderGroup, SupportSource, SurveyAnswerLikert, SurveyQuestionLikert
+from .models import (
+    Assessment,
+    AssessmentVersion,
+    Attribute,
+    Document,
+    GovernanceType,
+    ManagementArea,
+    ManagementAreaZone,
+    ManagementAuthority,
+    Organization,
+    ProtectedArea,
+    Region,
+    StakeholderGroup,
+    SupportSource,
+    SurveyAnswerLikert,
+    SurveyQuestionLikert,
+)
 
 
 class ChoiceTranslationOptions(TranslationOptions):
@@ -79,4 +95,14 @@ class SurveyAnswerLikertTranslationOptions(TranslationOptions):
 
 @register(SurveyQuestionLikert)
 class SurveyQuestionLikertTranslationOptions(TranslationOptions):
-    fields = ("dontknow_10", "poor_20", "average_30", "good_40", "excellent_50")
+    fields = (
+        "text",
+        "rationale",
+        "information",
+        "guidance",
+        "dontknow_10",
+        "poor_20",
+        "average_30",
+        "good_40",
+        "excellent_50",
+    )

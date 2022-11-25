@@ -23,6 +23,8 @@ DEBUG = False
 DEBUG_LEVEL = "ERROR"
 _allowed_hosts = os.environ.get("ALLOWED_HOSTS") or ""
 ALLOWED_HOSTS = [host.strip() for host in _allowed_hosts.split(",")]
+_admins = os.environ.get("ADMINS") or ""
+ADMINS = [("Elinor admin", admin.strip()) for admin in _admins.split(",")]
 EMAIL_BACKEND = "django.core.mail.backends.smtp.EmailBackend"
 API_DOMAIN = "https://dev-api.elinordata.org"
 FRONTEND_DOMAIN = "https://elinordata.org"
@@ -145,10 +147,10 @@ USE_TZ = True
 
 gettext = lambda s: s
 LANGUAGES = (
-    ('en', gettext('English')),
-    ('es', gettext('Español')),
-    ('id', gettext('Bahasa Indonesia')),
-    ('sw', gettext('Kiswahili')),
+    ("en", gettext("English")),
+    ("es", gettext("Español")),
+    ("id", gettext("Bahasa Indonesia")),
+    ("sw", gettext("Kiswahili")),
 )
 
 
@@ -246,8 +248,7 @@ REST_AUTH_REGISTER_SERIALIZERS = {
 
 AUTHENTICATION_BACKENDS = [
     # allauth specific authentication methods, such as login by e-mail
-    'allauth.account.auth_backends.AuthenticationBackend',
+    "allauth.account.auth_backends.AuthenticationBackend",
     # Needed to login by username in Django admin, regardless of allauth
-    'django.contrib.auth.backends.ModelBackend',
+    "django.contrib.auth.backends.ModelBackend",
 ]
-

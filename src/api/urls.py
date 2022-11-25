@@ -1,5 +1,6 @@
-from django.urls import path
+from django.urls import path, re_path
 from .resources.base import (
+    health,
     ElinorDefaultRouter,
     assessmentversion,
     AttributeViewSet,
@@ -59,6 +60,7 @@ router.register(r"users", UserViewSet, "user")
 router.register(f"reports/assessments", AssessmentReportView, "assessmentreport")
 
 api_urls = router.urls + [
+    re_path(r"^health/$", health),
     path("assessmentversion", assessmentversion, name="assessmentversion"),
     path(
         "contactassessmentadmins",

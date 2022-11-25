@@ -34,7 +34,9 @@ class Command(BaseCommand):
 
     def get_s3_bucket_obj_list(self):
         try:
-            return self.s3.list_objects_v2(Bucket=settings.AWS_BACKUP_BUCKET).get("Contents")
+            return self.s3.list_objects_v2(Bucket=settings.AWS_BACKUP_BUCKET).get(
+                "Contents"
+            )
         except:
             traceback.print_exc()
             return []
@@ -53,7 +55,7 @@ class Command(BaseCommand):
             "-c",
             action="store_true",
             default=False,
-            help="Execute within a scheduled context only appropriate for production environment"
+            help="Execute within a scheduled context only appropriate for production environment",
         )
 
     def handle(self, *args, **options):
@@ -95,7 +97,9 @@ class Command(BaseCommand):
                 if self.backup in s3_obj["Key"]:
                     age = (self.now - s3_obj.get("LastModified")).days
                     if age > settings.S3_DBBACKUP_MAXAGE:
-                        self.s3.delete_object(Bucket=settings.AWS_BACKUP_BUCKET, Key=s3_obj["Key"])
+                        self.s3.delete_object(
+                            Bucket=settings.AWS_BACKUP_BUCKET, Key=s3_obj["Key"]
+                        )
                         print(f"{s3_obj['Key']} deleted")
             print("Cleanup complete")
 
