@@ -20,7 +20,7 @@ class Command(BaseCommand):
         self.now = datetime.now(timezone.utc)
         self.backup = os.environ.get("BACKUP", "false").lower()
         self.env = os.environ.get("ENV", "none").lower()
-        self.local_file_location = os.path.join(os.path.sep, "tmp", settings.APPNAME)
+        self.local_file_location = os.path.join(os.path.sep, "tmp", "webapp")
         try:
             os.mkdir(self.local_file_location)
         except OSError:
@@ -118,6 +118,6 @@ class Command(BaseCommand):
         )
         dump_command = shlex.split(dump_command_str.format(**params))
         run_subprocess(
-            dump_command, to_file=f"/tmp/{settings.APPNAME}/std_out_backup.log"
+            dump_command, to_file="/tmp/webapp/std_out_backup.log"
         )
         print("Dump complete")
