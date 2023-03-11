@@ -12,7 +12,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     python3-dev \
     wget \
-    vim \
+    less \
     nano \
     supervisor \
     nginx \
