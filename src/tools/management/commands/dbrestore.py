@@ -1,25 +1,21 @@
+import boto3
 import os
 import shlex
-import subprocess
 import traceback
-import zipfile
-from django.core.management.base import BaseCommand
+from api.utils import run_subprocess
 from django.conf import settings
-import boto3
-from boto3.s3.transfer import S3Transfer
-from optparse import make_option
+from django.core.management.base import BaseCommand
 
 
 class Command(BaseCommand):
     help = "Recreate db and restore data from most recent dump"
+    requires_system_checks = False
 
     def __init__(self):
         super(Command, self).__init__()
-        self.restore = os.environ.get("RESTORE", "false").lower()
         self.env = os.environ.get("ENV", "none").lower()
-        print("ENV: %s" % self.env)
-        print("RESTORE: %s" % self.restore)
-        self.local_file_location = os.path.join(os.path.sep, "tmp", settings.APPNAME)
+        self.restore = self.env
+        self.local_file_location = os.path.join(os.path.sep, "tmp", "webapp")
         try:
             os.mkdir(self.local_file_location)
         except OSError:
@@ -59,10 +55,8 @@ class Command(BaseCommand):
                 print("Incorrect argument type")
                 return None
             self.restore = restore_name
-
-        if self.restore in ["False", "false"]:
-            print("Skipping Restore")
-            return None
+        print("ENV: %s" % self.env)
+        print("RESTORE: %s" % self.restore)
 
         if self.env == "prod" and options.get("force") is not True:
             raise Exception("Restoring production database needs to be forced.")
@@ -156,7 +150,7 @@ class Command(BaseCommand):
 
         init_db_commands = [
             """SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $${db_name}$$;""",
-            "DROP DATABASE {db_name};",
+            "DROP DATABASE IF EXISTS {db_name};",
             "CREATE DATABASE {db_name} OWNER {db_user};",
             "ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO {db_user};",
         ]
@@ -167,7 +161,7 @@ class Command(BaseCommand):
             psql_command = "%s %s" % (cmd, query.format(**params))
             print(psql_command)
             command = shlex.split(psql_command)
-            self._run(command)
+            run_subprocess(command)
 
         print("Init Complete!")
 
@@ -180,37 +174,11 @@ class Command(BaseCommand):
             "db_name": settings.DATABASES["default"]["NAME"],
         }
 
-        cmd_str = "psql -U {db_user} -h {db_host} -d {db_name} -q -f {sql_loc}".format(
+        cmd_str = "pg_restore -O -x -F c --jobs=4 -U {db_user} -h {db_host} -d {db_name} {sql_loc}".format(
             **params
         )
         print("$> %s" % cmd_str)
 
         command = shlex.split(cmd_str)
 
-        self._run(command, to_file=f"/tmp/{settings.APPNAME}/stdout.log")
-
-    def _run(self, command, std_input=None, to_file=None):
-        try:
-            proc = subprocess.Popen(
-                command,
-                stdin=subprocess.PIPE,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-        except Exception as e:
-            print(command)
-            raise e
-
-        data, err = proc.communicate(input=std_input)
-
-        if to_file is not None:
-            with open(to_file, "w") as f:
-                f.write("DATA: \n")
-                # f.write(data)
-                f.write(data.decode("utf-8"))
-                f.write("ERR: \n")
-                f.write(err.decode("utf-8"))
-                # f.write(err)
-        else:
-            print(data)
-            print(err)
+        run_subprocess(command, to_file=f"/tmp/webapp/stdout_restore.log")
