@@ -137,3 +137,15 @@ $ fab dbrestore:<env>
 
 env: local, dev, prod
 ```
+
+### Translation support
+
+To add a language:
+- add to settings.LANGUAGES
+- makemigrations and migrate
+
+To add model/field for translation:
+- add to translation.py
+- makemigrations and migrate
+- run update_translation_fields to copy existing base value to default-language field versions (e.g. name -> name_en)
+- alter admin to mixin TranslationAdmin
