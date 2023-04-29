@@ -127,6 +127,7 @@ class AssessmentReportGeoSerializer(
 
     class Meta(AssessmentReportSerializer.Meta):
         geo_field = "polygon"
+        fields = AssessmentReportSerializer.Meta.fields + ["polygon"]
 
 
 class AssessmentReportView(ReportView):
