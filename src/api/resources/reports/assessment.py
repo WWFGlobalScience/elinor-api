@@ -1,3 +1,4 @@
+from collections import defaultdict
 from django.conf import settings
 from django_countries.serializers import CountryFieldMixin
 from rest_framework import serializers
@@ -11,18 +12,11 @@ from ...models import (
     SurveyAnswerLikert,
     SurveyQuestionLikert,
 )
+from ...models.base import EXCELLENT
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
-class SurveyAnswerLikertSerializer(serializers.ModelSerializer):
-    question = serializers.SerializerMethodField()
-
-    def get_question(self, obj):
-        return obj.question.key
-
-    class Meta:
-        model = SurveyAnswerLikert
-        fields = ["question", "choice", "explanation"]
+ATTRIBUTE_NORMALIZER = 10
 
 
 # TODO: deal with ManagementAreaZone, parent/containedby
@@ -65,11 +59,48 @@ class ManagementAreaReportSerializer(CountryFieldMixin, BaseReportSerializer):
 
 
 class AssessmentReportSerializer(BaseReportSerializer):
+    _attribute_scores = None
+
+    def attribute_scores(self, obj):
+        if not self._attribute_scores:
+            answers = (
+                SurveyAnswerLikert.objects.filter(assessment=obj)
+                .select_related("question", "question__attribute")
+                .order_by(
+                    "question__attribute__order",
+                    "question__attribute__name",
+                    "question__number",
+                )
+            )
+            attributes = defaultdict(list)
+            for a in answers:
+                answer = {
+                    "question": a.question.key,
+                    "choice": a.choice,
+                    "explanation": a.explanation,
+                }
+                attributes[a.question.attribute.name].append(answer)
+
+            output_attributes = []
+            for attrib, answers in attributes.items():
+                total_points = len(answers) * EXCELLENT
+                points = sum(
+                    [0 if a["choice"] is None else a["choice"] for a in answers]
+                )
+                score = points / total_points
+                normalized_score = round(score * ATTRIBUTE_NORMALIZER, 1)
+                output_attributes.append(
+                    {"attribute": attrib, "score": normalized_score, "answers": answers}
+                )
+
+            self._attribute_scores = output_attributes
+
+        return self._attribute_scores
+
     published_version = serializers.StringRelatedField()
     organization = serializers.StringRelatedField()
     status = serializers.CharField(source="get_status_display")
     data_policy = serializers.CharField(source="get_data_policy_display")
-    attributes = serializers.StringRelatedField(many=True)
     person_responsible = serializers.CharField(
         source="person_responsible.get_full_name"
     )
@@ -78,7 +109,23 @@ class AssessmentReportSerializer(BaseReportSerializer):
     )
     collection_method = serializers.CharField(source="get_collection_method_display")
     management_area = ManagementAreaReportSerializer()
-    survey_answer_likerts = SurveyAnswerLikertSerializer(many=True)
+    attributes = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+
+    def get_attributes(self, obj):
+        output_attributes = self.attribute_scores(obj)
+        return output_attributes
+
+    def get_score(self, obj):
+        attributes = self.attribute_scores(obj)
+        attributes_count = len(attributes)
+        if attributes_count == 0:
+            attributes_count = 1
+        total_attribs = attributes_count * ATTRIBUTE_NORMALIZER
+        scores_total = sum([a["score"] for a in attributes])
+        score_ratio = scores_total / total_attribs
+        normalized_score = round(score_ratio * 100)
+        return normalized_score
 
     class Meta:
         model = Assessment
@@ -93,7 +140,6 @@ class AssessmentReportSerializer(BaseReportSerializer):
             "organization",
             "status",
             "data_policy",
-            "attributes",
             "person_responsible",
             "person_responsible_role",
             "person_responsible_role_other",
@@ -114,7 +160,8 @@ class AssessmentReportSerializer(BaseReportSerializer):
             "collection_method",
             "collection_method_text",
             "management_area",
-            "survey_answer_likerts",
+            "attributes",
+            "score",
         ]
 
 
