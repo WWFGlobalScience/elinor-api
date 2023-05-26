@@ -1,4 +1,6 @@
+import re
 import subprocess
+from typing import Optional
 
 
 def run_subprocess(command, std_input=None, to_file=None):
@@ -24,3 +26,11 @@ def run_subprocess(command, std_input=None, to_file=None):
             f.write(str(err))
     else:
         return data, err
+
+
+def slugify(text: str, separator: Optional[str] = "_") -> str:
+    text = re.sub(r"[^\w\s" + re.escape(separator) + "]", "", text.lower())
+    text = re.sub(r"[\s_]+", separator, text)
+    text = text.strip(" " + separator)
+
+    return text
