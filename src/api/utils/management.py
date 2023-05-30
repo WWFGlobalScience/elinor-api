@@ -65,9 +65,9 @@ def clean_multipolygon(polygon):
     # print(polygon.geom_count)
     # print(polygon.srid)
     if polygon.geom_type in ACCEPTED_GEOMETRIES:
-        polygon.close_rings()
         # print(polygon.geos.valid_reason)
         polygon.coord_dim = 2  # coerce 3D geometries to 2D
+        polygon.close_rings()
         multi = polygon
         # Convert polygon of rings to multipolygon of polygons, to ensure dissolve
         if polygon.geom_type == POLYGON:
