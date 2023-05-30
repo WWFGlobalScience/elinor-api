@@ -129,6 +129,9 @@ class Assessment(BaseModel):
         ),
     )
     collection_method_text = models.TextField(blank=True)
+    strengths_explanation = models.TextField(blank=True)
+    needs_explanation = models.TextField(blank=True)
+    context = models.TextField(blank=True)
 
     @property
     def required_questions(self):

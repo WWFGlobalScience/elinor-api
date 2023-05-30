@@ -52,7 +52,12 @@ class ReadOnlyOrAuthenticatedCreate(permissions.BasePermission):
 
 
 class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission):
-    PUBLISHED_MODIFIABLE_FIELDS = ["data_policy"]
+    PUBLISHED_MODIFIABLE_FIELDS = [
+        "data_policy",
+        "strengths_explanation",
+        "needs_explanation",
+        "context",
+    ]
 
     def has_permission(self, request, view):
         if request.method in permissions.SAFE_METHODS:
