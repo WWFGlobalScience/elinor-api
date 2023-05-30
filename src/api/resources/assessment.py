@@ -33,7 +33,11 @@ from ..permissions import (
     AssessmentReadOnlyOrAuthenticatedUserPermission,
     CollaboratorReadOnlyOrAuthenticatedUserPermission,
 )
-from ..utils.assessment import enforce_required_attributes, log_assessment_change
+from ..utils.assessment import (
+    enforce_required_attributes,
+    log_assessment_change,
+    assessment_score,
+)
 
 
 def get_assessment_related_queryset(user, model):
@@ -102,6 +106,10 @@ class AssessmentSerializer(BaseAPISerializer):
     )
     percent_complete = serializers.ReadOnlyField()
     published_version = serializers.StringRelatedField(read_only=True)
+    score = serializers.SerializerMethodField()
+
+    def get_score(self, obj):
+        return assessment_score(obj)
 
     # def validate(self, data):
     #     required_attributes = Attribute.objects.filter(required=True)

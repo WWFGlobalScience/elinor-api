@@ -1,4 +1,3 @@
-from collections import defaultdict
 from django.conf import settings
 from django_countries.serializers import CountryFieldMixin
 from rest_framework import serializers
@@ -9,15 +8,11 @@ from ..assessment import get_assessment_related_queryset
 from ...models import (
     Assessment,
     ManagementArea,
-    SurveyAnswerLikert,
     SurveyQuestionLikert,
 )
-from ...models.base import EXCELLENT
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 from ...utils import slugify
-
-
-ATTRIBUTE_NORMALIZER = 10
+from ...utils.assessment import attribute_scores, assessment_score
 
 
 # TODO: deal with ManagementAreaZone, parent/containedby
@@ -75,53 +70,11 @@ class AssessmentReportSerializer(BaseReportSerializer):
     attributes = serializers.SerializerMethodField()
     score = serializers.SerializerMethodField()
 
-    def attribute_scores(self, obj):
-        answers = (
-            SurveyAnswerLikert.objects.filter(assessment=obj)
-            .select_related("question", "question__attribute")
-            .order_by(
-                "question__attribute__order",
-                "question__attribute__name",
-                "question__number",
-            )
-        )
-
-        attributes = defaultdict(list)
-        for a in answers:
-            answer = {
-                "question": a.question.key,
-                "choice": a.choice,
-                "explanation": a.explanation,
-            }
-            attributes[a.question.attribute.name].append(answer)
-
-        output_attributes = []
-        for attrib, answers in attributes.items():
-            nonnullanswers = [a for a in answers if a["choice"] is not None]
-            total_points = len(nonnullanswers) * EXCELLENT
-            points = sum([a["choice"] for a in nonnullanswers])
-            score = points / total_points
-            normalized_score = round(score * ATTRIBUTE_NORMALIZER, 1)
-            output_attributes.append(
-                {"attribute": attrib, "score": normalized_score, "answers": answers}
-            )
-
-        return output_attributes
-
     def get_attributes(self, obj):
-        output_attributes = self.attribute_scores(obj)
-        return output_attributes
+        return attribute_scores(obj)
 
     def get_score(self, obj):
-        attributes = self.attribute_scores(obj)
-        attributes_count = len(attributes)
-        if attributes_count == 0:
-            attributes_count = 1
-        total_attribs = attributes_count * ATTRIBUTE_NORMALIZER
-        scores_total = sum([a["score"] for a in attributes])
-        score_ratio = scores_total / total_attribs
-        normalized_score = round(score_ratio * 100)
-        return normalized_score
+        return assessment_score(obj)
 
     class Meta:
         model = Assessment

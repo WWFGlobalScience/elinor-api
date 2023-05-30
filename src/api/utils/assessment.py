@@ -1,4 +1,53 @@
-from ..models import Assessment, AssessmentChange, Attribute
+from collections import defaultdict
+from django.conf import settings
+from ..models import Assessment, AssessmentChange, Attribute, SurveyAnswerLikert
+from ..models.base import EXCELLENT
+
+
+def attribute_scores(assessment):
+    answers = (
+        SurveyAnswerLikert.objects.filter(assessment=assessment)
+        .select_related("question", "question__attribute")
+        .order_by(
+            "question__attribute__order",
+            "question__attribute__name",
+            "question__number",
+        )
+    )
+
+    attributes = defaultdict(list)
+    for a in answers:
+        answer = {
+            "question": a.question.key,
+            "choice": a.choice,
+            "explanation": a.explanation,
+        }
+        attributes[a.question.attribute.name].append(answer)
+
+    output_attributes = []
+    for attrib, answers in attributes.items():
+        nonnullanswers = [a for a in answers if a["choice"] is not None]
+        total_points = len(nonnullanswers) * EXCELLENT
+        points = sum([a["choice"] for a in nonnullanswers])
+        score = points / total_points
+        normalized_score = round(score * settings.ATTRIBUTE_NORMALIZER, 1)
+        output_attributes.append(
+            {"attribute": attrib, "score": normalized_score, "answers": answers}
+        )
+
+    return output_attributes
+
+
+def assessment_score(assessment):
+    attributes = attribute_scores(assessment)
+    attributes_count = len(attributes)
+    if attributes_count == 0:
+        attributes_count = 1
+    total_attribs = attributes_count * settings.ATTRIBUTE_NORMALIZER
+    scores_total = sum([a["score"] for a in attributes])
+    score_ratio = scores_total / total_attribs
+    normalized_score = round(score_ratio * 100)
+    return normalized_score
 
 
 def _log_assessment_change(

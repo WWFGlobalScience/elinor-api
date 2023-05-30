@@ -171,6 +171,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 APPNAME = "elinor"
 SITE_ID = 1
 GEO_PRECISION = 6  # to nearest 10 cm
+ATTRIBUTE_NORMALIZER = 10
 
 REST_FRAMEWORK = {
     "COERCE_DECIMAL_TO_STRING": False,
