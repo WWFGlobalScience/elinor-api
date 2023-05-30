@@ -24,7 +24,13 @@ class ChoiceTranslationOptions(TranslationOptions):
 
 @register(Assessment)
 class AssessmentTranslationOptions(TranslationOptions):
-    fields = ("name", "collection_method_text")
+    fields = (
+        "name",
+        "collection_method_text",
+        "strengths_explanation",
+        "needs_explanation",
+        "context",
+    )
 
 
 @register(AssessmentVersion)
