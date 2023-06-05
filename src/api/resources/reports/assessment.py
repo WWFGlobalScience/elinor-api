@@ -1,11 +1,14 @@
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
+from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
+from django_filters import ChoiceFilter
 from rest_framework import serializers
 from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
 from ..assessment import get_assessment_related_queryset
+from ..base import BaseAPIFilterSet
 from ...models import (
     Assessment,
     ManagementArea,
@@ -146,6 +149,19 @@ class AssessmentReportGeoSerializer(
         fields = AssessmentReportSerializer.Meta.fields
 
 
+class AssessmentReportFilterSet(BaseAPIFilterSet):
+    # Same as resources/assessments/AssessmentFilterSet
+    management_area_countries = ChoiceFilter(
+        field_name="management_area__countries",
+        choices=countries,
+        lookup_expr="icontains",
+    )
+
+    class Meta:
+        model = Assessment
+        exclude = ["management_plan_file"]
+
+
 class AssessmentReportView(ReportView):
     ordering = ["name", "year"]
     serializer_class = AssessmentReportSerializer
@@ -153,9 +169,8 @@ class AssessmentReportView(ReportView):
     csv_method_fields = ["attributes"]
     file_prefix = "assessmentreport"
     _question_likerts = None
-    # TODO: add filters and search
-    # filter_class = AssessmentFilterSet
-    # search_fields = ["name", "management_area__name"]
+    filter_class = AssessmentReportFilterSet
+    search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
     def get_queryset(self):
