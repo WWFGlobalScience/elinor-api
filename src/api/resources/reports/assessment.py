@@ -1,7 +1,8 @@
 from django.conf import settings
+from django.contrib.gis.geos import GEOSGeometry
 from django_countries.serializers import CountryFieldMixin
 from rest_framework import serializers
-from rest_framework_gis.fields import GeometryField
+from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
 from ..assessment import get_assessment_related_queryset
@@ -120,13 +121,29 @@ class AssessmentReportSerializer(BaseReportSerializer):
 class AssessmentReportGeoSerializer(
     GeoFeatureModelSerializer, AssessmentReportSerializer
 ):
-    polygon = GeometryField(
-        source="management_area.polygon", precision=settings.GEO_PRECISION, default=None
-    )
+    geom = GeometrySerializerMethodField()
+
+    def get_geom(self, obj):
+        polygon = obj.management_area.polygon
+        point = obj.management_area.point
+        geomfield = GeometryField(precision=settings.GEO_PRECISION, default=None)
+
+        geom = None
+        if polygon:
+            geom = polygon
+        elif point:
+            geom = point
+
+        if geom:
+            geomfield_value = GEOSGeometry(geom.wkt)
+            processed_geom_geojson = geomfield.to_representation(geomfield_value)
+            return GEOSGeometry(str(processed_geom_geojson))
+
+        return None
 
     class Meta(AssessmentReportSerializer.Meta):
-        geo_field = "polygon"
-        fields = AssessmentReportSerializer.Meta.fields + ["polygon"]
+        geo_field = "geom"
+        fields = AssessmentReportSerializer.Meta.fields
 
 
 class AssessmentReportView(ReportView):
