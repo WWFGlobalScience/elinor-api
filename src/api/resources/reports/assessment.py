@@ -74,11 +74,20 @@ class AssessmentReportSerializer(BaseReportSerializer):
     attributes = serializers.SerializerMethodField()
     score = serializers.SerializerMethodField()
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._attribute_scores = None
+
+    def get_attribute_scores(self, obj):
+        if self._attribute_scores is None:
+            self._attribute_scores = attribute_scores(obj)
+        return self._attribute_scores
+
     def get_attributes(self, obj):
-        return attribute_scores(obj)
+        return self.get_attribute_scores(obj)
 
     def get_score(self, obj):
-        return assessment_score(obj)
+        return assessment_score(self.get_attribute_scores(obj))
 
     class Meta:
         model = Assessment

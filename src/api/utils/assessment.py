@@ -26,25 +26,25 @@ def attribute_scores(assessment):
 
     output_attributes = []
     for attrib, answers in attributes.items():
-        nonnullanswers = [a for a in answers if a["choice"] is not None]
-        total_points = len(nonnullanswers) * EXCELLENT
-        points = sum([a["choice"] for a in nonnullanswers])
-        score = points / total_points
-        normalized_score = round(score * settings.ATTRIBUTE_NORMALIZER, 1)
-        output_attributes.append(
-            {"attribute": attrib, "score": normalized_score, "answers": answers}
-        )
+        nonnull_answers = [a for a in answers if a["choice"] is not None]
+        total_points = len(nonnull_answers) * EXCELLENT
+        points = sum([a["choice"] for a in nonnull_answers])
+        attribute = {"attribute": attrib, "score": None, "answers": answers}
+        if total_points:
+            score = points / total_points
+            normalized_score = round(score * settings.ATTRIBUTE_NORMALIZER, 1)
+            attribute["score"] = normalized_score
+        output_attributes.append(attribute)
 
     return output_attributes
 
 
-def assessment_score(assessment):
-    attributes = attribute_scores(assessment)
-    attributes_count = len(attributes)
-    if attributes_count == 0:
-        attributes_count = 1
-    total_attribs = attributes_count * settings.ATTRIBUTE_NORMALIZER
-    scores_total = sum([a["score"] for a in attributes])
+def assessment_score(attributes):
+    nonnull_attributes = [a for a in attributes if a["score"] is not None]
+    total_attribs = len(nonnull_attributes) * settings.ATTRIBUTE_NORMALIZER
+    scores_total = sum([a["score"] for a in nonnull_attributes])
+    if not total_attribs:
+        return None
     score_ratio = scores_total / total_attribs
     normalized_score = round(score_ratio * 100)
     return normalized_score
