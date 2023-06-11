@@ -155,7 +155,7 @@ class AssessmentReportGeoSerializer(
 
     class Meta(AssessmentReportSerializer.Meta):
         geo_field = "geom"
-        fields = AssessmentReportSerializer.Meta.fields
+        fields = AssessmentReportSerializer.Meta.fields + ["geom"]
 
 
 class AssessmentReportFilterSet(BaseAPIFilterSet):
