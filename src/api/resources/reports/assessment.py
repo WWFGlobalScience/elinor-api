@@ -136,20 +136,21 @@ class AssessmentReportGeoSerializer(
     geom = GeometrySerializerMethodField()
 
     def get_geom(self, obj):
-        polygon = obj.management_area.polygon
-        point = obj.management_area.point
-        geomfield = GeometryField(precision=settings.GEO_PRECISION, default=None)
+        if obj.management_area is not None:
+            polygon = obj.management_area.polygon
+            point = obj.management_area.point
+            geomfield = GeometryField(precision=settings.GEO_PRECISION, default=None)
 
-        geom = None
-        if polygon:
-            geom = polygon
-        elif point:
-            geom = point
+            geom = None
+            if polygon:
+                geom = polygon
+            elif point:
+                geom = point
 
-        if geom:
-            geomfield_value = GEOSGeometry(geom.wkt)
-            processed_geom_geojson = geomfield.to_representation(geomfield_value)
-            return GEOSGeometry(str(processed_geom_geojson))
+            if geom:
+                geomfield_value = GEOSGeometry(geom.wkt)
+                processed_geom_geojson = geomfield.to_representation(geomfield_value)
+                return GEOSGeometry(str(processed_geom_geojson))
 
         return None
 
