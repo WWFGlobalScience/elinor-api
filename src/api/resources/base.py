@@ -53,7 +53,7 @@ User = get_user_model()
 user_choice_qs = User.objects.order_by("username")
 
 
-@api_view(['GET', 'HEAD', 'OPTIONS'])
+@api_view(["GET", "HEAD", "OPTIONS"])
 @authentication_classes([])
 @permission_classes((AllowAny,))
 def health(request):

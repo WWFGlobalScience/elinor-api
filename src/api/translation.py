@@ -24,7 +24,13 @@ class ChoiceTranslationOptions(TranslationOptions):
 
 @register(Assessment)
 class AssessmentTranslationOptions(TranslationOptions):
-    fields = ("name", "collection_method_text")
+    fields = (
+        "name",
+        "collection_method_text",
+        "strengths_explanation",
+        "needs_explanation",
+        "context",
+    )
 
 
 @register(AssessmentVersion)
@@ -100,9 +106,8 @@ class SurveyQuestionLikertTranslationOptions(TranslationOptions):
         "rationale",
         "information",
         "guidance",
-        "dontknow_10",
-        "poor_20",
-        "average_30",
-        "good_40",
-        "excellent_50",
+        "poor_0",
+        "average_1",
+        "good_2",
+        "excellent_3",
     )

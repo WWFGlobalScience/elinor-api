@@ -117,7 +117,5 @@ class Command(BaseCommand):
             "pg_dump -F c -v -U {db_user} -h {db_host} -d {db_name} -f {dump_file}"
         )
         dump_command = shlex.split(dump_command_str.format(**params))
-        run_subprocess(
-            dump_command, to_file="/tmp/webapp/std_out_backup.log"
-        )
+        run_subprocess(dump_command, to_file="/tmp/webapp/std_out_backup.log")
         print("Dump complete")

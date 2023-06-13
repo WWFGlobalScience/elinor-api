@@ -4,13 +4,11 @@ from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 
 
-DONTKNOW = 10
-POOR = 20
-AVERAGE = 30
-GOOD = 40
-EXCELLENT = 50
+POOR = 0
+AVERAGE = 1
+GOOD = 2
+EXCELLENT = 3
 LIKERT_CHOICES = (
-    (DONTKNOW, _(f"don't know [{DONTKNOW}]")),
     (POOR, _(f"poor [{POOR}]")),
     (AVERAGE, _(f"average [{AVERAGE}]")),
     (GOOD, _(f"good [{GOOD}]")),

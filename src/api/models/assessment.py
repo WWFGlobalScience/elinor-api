@@ -129,6 +129,9 @@ class Assessment(BaseModel):
         ),
     )
     collection_method_text = models.TextField(blank=True)
+    strengths_explanation = models.TextField(blank=True)
+    needs_explanation = models.TextField(blank=True)
+    context = models.TextField(blank=True)
 
     @property
     def required_questions(self):
@@ -348,11 +351,9 @@ class SurveyQuestion(BaseModel):
     attribute = models.ForeignKey(
         Attribute, related_name="attribute_questions", on_delete=models.PROTECT
     )
-    key = models.CharField(
-        max_length=255, unique=True
-    )  # migration: populate with current field name
+    key = models.CharField(max_length=255, unique=True)
     number = models.PositiveSmallIntegerField()
-    text = models.TextField()  # migration: populate with current verbose_name
+    text = models.TextField()
     rationale = models.TextField()
     information = models.TextField()
     guidance = models.TextField()
@@ -365,11 +366,10 @@ class SurveyQuestion(BaseModel):
 
 
 class SurveyQuestionLikert(SurveyQuestion):
-    dontknow_10 = models.TextField()
-    poor_20 = models.TextField()
-    average_30 = models.TextField()
-    good_40 = models.TextField()
-    excellent_50 = models.TextField()
+    poor_0 = models.TextField()
+    average_1 = models.TextField()
+    good_2 = models.TextField()
+    excellent_3 = models.TextField()
 
     class Meta:
         ordering = ["attribute", "number"]
@@ -393,7 +393,9 @@ class SurveyAnswerLikert(SurveyAnswer):
         related_name="questionlikert_answers",
         on_delete=models.PROTECT,
     )
-    choice = models.PositiveSmallIntegerField(choices=LIKERT_CHOICES)
+    choice = models.PositiveSmallIntegerField(
+        choices=LIKERT_CHOICES, null=True, blank=True
+    )
     explanation = models.TextField(blank=True)
 
     class Meta:

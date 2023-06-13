@@ -1,28 +1,22 @@
 from django.conf import settings
+from django.contrib.gis.geos import GEOSGeometry
+from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
+from django_filters import ChoiceFilter
 from rest_framework import serializers
-from rest_framework_gis.fields import GeometryField
+from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
 from ..assessment import get_assessment_related_queryset
+from ..base import BaseAPIFilterSet
 from ...models import (
     Assessment,
     ManagementArea,
-    SurveyAnswerLikert,
     SurveyQuestionLikert,
 )
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
-
-
-class SurveyAnswerLikertSerializer(serializers.ModelSerializer):
-    question = serializers.SerializerMethodField()
-
-    def get_question(self, obj):
-        return obj.question.key
-
-    class Meta:
-        model = SurveyAnswerLikert
-        fields = ["question", "choice", "explanation"]
+from ...utils import slugify
+from ...utils.assessment import attribute_scores, assessment_score
 
 
 # TODO: deal with ManagementAreaZone, parent/containedby
@@ -69,7 +63,6 @@ class AssessmentReportSerializer(BaseReportSerializer):
     organization = serializers.StringRelatedField()
     status = serializers.CharField(source="get_status_display")
     data_policy = serializers.CharField(source="get_data_policy_display")
-    attributes = serializers.StringRelatedField(many=True)
     person_responsible = serializers.CharField(
         source="person_responsible.get_full_name"
     )
@@ -78,7 +71,23 @@ class AssessmentReportSerializer(BaseReportSerializer):
     )
     collection_method = serializers.CharField(source="get_collection_method_display")
     management_area = ManagementAreaReportSerializer()
-    survey_answer_likerts = SurveyAnswerLikertSerializer(many=True)
+    attributes = serializers.SerializerMethodField()
+    score = serializers.SerializerMethodField()
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._attribute_scores = None
+
+    def get_attribute_scores(self, obj):
+        if self._attribute_scores is None:
+            self._attribute_scores = attribute_scores(obj)
+        return self._attribute_scores
+
+    def get_attributes(self, obj):
+        return self.get_attribute_scores(obj)
+
+    def get_score(self, obj):
+        return assessment_score(self.get_attribute_scores(obj))
 
     class Meta:
         model = Assessment
@@ -93,7 +102,6 @@ class AssessmentReportSerializer(BaseReportSerializer):
             "organization",
             "status",
             "data_policy",
-            "attributes",
             "person_responsible",
             "person_responsible_role",
             "person_responsible_role_other",
@@ -113,32 +121,66 @@ class AssessmentReportSerializer(BaseReportSerializer):
             "management_plan_file",
             "collection_method",
             "collection_method_text",
+            "strengths_explanation",
+            "needs_explanation",
+            "context",
             "management_area",
-            "survey_answer_likerts",
+            "attributes",
+            "score",
         ]
 
 
 class AssessmentReportGeoSerializer(
     GeoFeatureModelSerializer, AssessmentReportSerializer
 ):
-    polygon = GeometryField(
-        source="management_area.polygon", precision=settings.GEO_PRECISION, default=None
-    )
+    geom = GeometrySerializerMethodField()
+
+    def get_geom(self, obj):
+        if obj.management_area is not None:
+            polygon = obj.management_area.polygon
+            point = obj.management_area.point
+            geomfield = GeometryField(precision=settings.GEO_PRECISION, default=None)
+
+            geom = None
+            if polygon:
+                geom = polygon
+            elif point:
+                geom = point
+
+            if geom:
+                geomfield_value = GEOSGeometry(geom.wkt)
+                processed_geom_geojson = geomfield.to_representation(geomfield_value)
+                return GEOSGeometry(str(processed_geom_geojson))
+
+        return None
 
     class Meta(AssessmentReportSerializer.Meta):
-        geo_field = "polygon"
+        geo_field = "geom"
+        fields = AssessmentReportSerializer.Meta.fields + ["geom"]
+
+
+class AssessmentReportFilterSet(BaseAPIFilterSet):
+    # Same as resources/assessments/AssessmentFilterSet
+    management_area_countries = ChoiceFilter(
+        field_name="management_area__countries",
+        choices=countries,
+        lookup_expr="icontains",
+    )
+
+    class Meta:
+        model = Assessment
+        exclude = ["management_plan_file"]
 
 
 class AssessmentReportView(ReportView):
     ordering = ["name", "year"]
     serializer_class = AssessmentReportSerializer
     serializer_class_geojson = AssessmentReportGeoSerializer
-    csv_method_fields = ["survey_answer_likerts"]
+    csv_method_fields = ["attributes"]
     file_prefix = "assessmentreport"
     _question_likerts = None
-    # TODO: add filters and search
-    # filter_class = AssessmentFilterSet
-    # search_fields = ["name", "management_area__name"]
+    filter_class = AssessmentReportFilterSet
+    search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
     def get_queryset(self):
@@ -148,36 +190,51 @@ class AssessmentReportView(ReportView):
             .prefetch_related("assessment_flags")
         )
 
-    @property
-    def question_likerts(self):
-        if not self._question_likerts:
-            questions = SurveyQuestionLikert.objects.order_by(
-                "attribute__order", "number"
-            )
-            self._question_likerts = questions
-        return self._question_likerts
-
-    def get_answer_by_slug(self, answers, slug):
-        if answers:
-            for answer in answers:
-                if answer["question"] == slug:
-                    return answer
-        return None
-
-    def get_survey_answer_likerts(self, obj=None):
-        answers = []
+    def get_attributes(self, obj=None):
+        csv_fields = []
+        attribute = None
         for question in self.question_likerts:
+            attrib_field = attrib_name = None
+            if attribute != question.attribute:
+                attribute = question.attribute
+                attrib_name = f"{slugify(attribute.name)}__score"
+                attrib_field = {attrib_name: None}
+                csv_fields.append(attrib_field)
+
             choice_name = f"{question.key}__choice"
             explanation_name = f"{question.key}__explanation"
             choice_field = {choice_name: None}
             explanation_field = {explanation_name: None}
 
-            answer = self.get_answer_by_slug(obj, question.key)
+            answer = self.get_answer_by_slug(obj, attribute.name, question.key)
             if answer:
+                if attrib_field and attrib_name:
+                    attrib_field[attrib_name] = answer.get("score")
                 choice_field[choice_name] = answer.get("choice")
                 explanation_field[explanation_name] = answer.get("explanation")
 
-            answers.append(choice_field)
-            answers.append(explanation_field)
+            csv_fields.append(choice_field)
+            csv_fields.append(explanation_field)
 
-        return answers
+        return csv_fields
+
+    @property
+    def question_likerts(self):
+        if not self._question_likerts:
+            questions = SurveyQuestionLikert.objects.select_related(
+                "attribute"
+            ).order_by("attribute__order", "attribute__name", "number")
+            self._question_likerts = questions
+        return self._question_likerts
+
+    def get_answer_by_slug(self, attributes, attrib_name, slug):
+        if attributes:
+            for attribute in attributes:
+                for answer in attribute["answers"]:
+                    if answer["question"] == slug:
+                        return {
+                            "score": attribute["score"],
+                            "choice": answer["choice"],
+                            "explanation": answer["explanation"],
+                        }
+        return None
