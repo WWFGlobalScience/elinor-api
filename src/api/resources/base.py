@@ -25,6 +25,7 @@ from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from ..models import (
+    ActiveLanguage,
     AssessmentVersion,
     Attribute,
     Document,
@@ -325,6 +326,21 @@ def assessmentversion(request):
         "-year", "-major_version"
     ).first()
     return Response(str(current_version))
+
+
+class ActiveLanguageSerializer(BaseAPISerializer):
+    class Meta:
+        model = ActiveLanguage
+        exclude = []
+
+
+class ActiveLanguageViewset(BaseAPIViewSet):
+    serializer_class = ActiveLanguageSerializer
+    permission_classes = [ReadOnly]
+    ordering = ["code", "name"]
+
+    def get_queryset(self):
+        return ActiveLanguage.objects.filter(active=True)
 
 
 class AttributeSerializer(BaseAPISerializer):
