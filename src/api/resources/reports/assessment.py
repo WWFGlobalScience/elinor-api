@@ -1,3 +1,4 @@
+from functools import cache
 from django.conf import settings
 from django.contrib.gis.geos import GEOSGeometry
 from django_countries import countries
@@ -76,18 +77,16 @@ class AssessmentReportSerializer(BaseReportSerializer):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self._attribute_scores = None
 
-    def get_attribute_scores(self, obj):
-        if self._attribute_scores is None:
-            self._attribute_scores = attribute_scores(obj)
-        return self._attribute_scores
+    @cache
+    def _attribute_scores(self, obj):
+        return attribute_scores(obj)
 
     def get_attributes(self, obj):
-        return self.get_attribute_scores(obj)
+        return self._attribute_scores(obj)
 
     def get_score(self, obj):
-        return assessment_score(self.get_attribute_scores(obj))
+        return assessment_score(self._attribute_scores(obj))
 
     class Meta:
         model = Assessment
