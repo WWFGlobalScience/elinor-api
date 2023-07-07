@@ -142,3 +142,15 @@ class Document(BaseModel):
 
     def __str__(self):
         return f"{self.version} {self.name}"
+
+
+class ActiveLanguage(BaseModel):
+    code = models.CharField(unique=True, max_length=15)
+    name = models.CharField(max_length=255)
+    active = models.BooleanField(default=False)
+
+    class Meta:
+        ordering = ["code", "name"]
+
+    def __str__(self):
+        return f"{self.code} {self.name}"
