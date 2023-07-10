@@ -76,9 +76,9 @@ class Command(BaseCommand):
         print(f"ENV: {self.env}")
         print(f"BACKUP: {self.backup}")
 
-        new_aws_key_name = f"{self.backup}/{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
-        new_backup_filename = f"{self.backup}_{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
-        new_backup_path = os.path.join(self.local_file_location, new_backup_filename)
+        new_keyname = f"{settings.APPNAME}_backup_{simpleflake()}.{BACKUP_EXTENSION}"
+        new_aws_key_name = f"{self.backup}/{new_keyname}"
+        new_backup_path = os.path.join(self.local_file_location, f"{self.backup}_{new_keyname}")
 
         self.pg_dump(new_backup_path)
 

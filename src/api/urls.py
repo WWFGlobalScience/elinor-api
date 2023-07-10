@@ -3,6 +3,7 @@ from .resources.base import (
     health,
     ElinorDefaultRouter,
     assessmentversion,
+    ActiveLanguageViewset,
     AttributeViewSet,
     DocumentViewSet,
     GovernanceTypeViewSet,
@@ -33,6 +34,7 @@ from .resources.reports.assessment import AssessmentReportView
 router = ElinorDefaultRouter()
 
 # Base resources
+router.register(r"activelanguages", ActiveLanguageViewset, "activelanguage")
 router.register(r"assessments", AssessmentViewSet, "assessment")
 router.register(r"attributes", AttributeViewSet, "attribute")
 router.register(r"assessmentchanges", AssessmentChangeViewSet, "assessmentchange")

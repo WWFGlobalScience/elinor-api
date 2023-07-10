@@ -1,4 +1,5 @@
 from .base import (
+    ActiveLanguage,
     AssessmentVersion,
     Attribute,
     Document,

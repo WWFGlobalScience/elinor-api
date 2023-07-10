@@ -1,11 +1,13 @@
 import csv
 import datetime
-from django.contrib import admin
+from django.conf import settings
+from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
 from django.contrib.gis.admin import OSMGeoAdmin
-from django.http import HttpResponse
-from django.urls import reverse
+from django.http import HttpResponse, HttpResponseRedirect
+from django.template.response import TemplateResponse
+from django.urls import path, reverse
 from django.utils.html import format_html
 from modeltranslation.admin import TranslationAdmin
 from ..models.base import *
@@ -244,3 +246,56 @@ class StakeholderGroupAdmin(BaseChoiceAdmin, TranslationAdmin):
 @admin.register(SupportSource)
 class SupportSourceAdmin(BaseChoiceAdmin, TranslationAdmin):
     pass
+
+
+@admin.register(ActiveLanguage)
+class ActiveLanguageAdmin(BaseAdmin):
+    list_display = ["code", "name", "active"] + BaseAdmin.list_display
+    readonly_fields = ["code", "name"] + BaseAdmin.readonly_fields
+
+    def get_urls(self):
+        urls = super().get_urls()
+        custom_urls = [
+            path(
+                "sync_languages/",
+                self.admin_site.admin_view(self.sync_languages_view),
+                name="sync_languages",
+            )
+        ]
+        return custom_urls + urls
+
+    def sync_languages_view(self, request):
+        template = "admin/api/activelanguage/sync_languages.html"
+        opts = self.model._meta
+        context = dict(
+            self.admin_site.each_context(request),
+            opts=opts,
+        )
+
+        if request.method == "POST":
+            existing_languages = [lang.code for lang in ActiveLanguage.objects.all()]
+            results = []
+            for language in settings.LANGUAGES:
+                code = language[0]
+                name = language[1]
+                if code in existing_languages:
+                    lang = ActiveLanguage.objects.get(code=code)
+                    lang.name = name
+                    lang.save()
+                    results.append(f"Updated existing {code} with name {name}")
+                    existing_languages.remove(code)
+                else:
+                    ActiveLanguage.objects.create(code=code, name=name)
+                    results.append(f"Added new language {code} {name}")
+
+            for code in existing_languages:
+                lang = ActiveLanguage.objects.get(code=code)
+                lang.delete()
+                results.append(f"Deleted existing language {code}")
+
+            for message in results:
+                messages.success(request, message)
+
+            return HttpResponseRedirect(reverse("admin:api_activelanguage_changelist"))
+
+        return TemplateResponse(request, template, context)
