@@ -141,8 +141,14 @@ env: local, dev, prod
 ### Translation support
 
 To add a language:
+- determine correct code and spelling ([ISO 639.2](https://www.loc.gov/standards/iso639-2/php/code_list.php) standard suggested)
 - add to settings.LANGUAGES
 - makemigrations and migrate
+
+To make a newly added language available from the `/activelanguages/` API endpoint:
+- in Django Admin, go to `Active languages` (`/admin/api/activelanguage/`)
+- click `Sync languages` button in upper right, then click button on following page
+- click language to edit details, check `Active` checkbox, and save
 
 To add model/field for translation:
 - add to translation.py
