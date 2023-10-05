@@ -150,6 +150,7 @@ LANGUAGES = (
     ("en", gettext("English")),
     ("es", gettext("Español")),
     ("id", gettext("Bahasa Indonesia")),
+    ("pt", gettext("Portuguese")),
     ("sw", gettext("Kiswahili")),
 )
 
