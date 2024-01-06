@@ -7,6 +7,7 @@ from ..models.base import EXCELLENT
 def attribute_scores(assessment):
     answers = (
         SurveyAnswerLikert.objects.filter(assessment=assessment)
+        # Q(attribute__in=self.attributes.all()) | Q(attribute__required=True)
         .select_related("question", "question__attribute")
         .order_by(
             "question__attribute__order",
