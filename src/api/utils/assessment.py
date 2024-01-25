@@ -2,6 +2,13 @@ from collections import defaultdict
 from django.conf import settings
 from ..models import Assessment, AssessmentChange, Attribute, SurveyAnswerLikert
 from ..models.base import EXCELLENT
+from ..models.assessment import SurveyQuestionLikert
+
+
+def questionlikerts():
+    return SurveyQuestionLikert.objects.select_related("attribute").order_by(
+        "attribute__order", "attribute__name", "number"
+    )
 
 
 def attribute_scores(assessment):
@@ -37,6 +44,19 @@ def attribute_scores(assessment):
         output_attributes.append(attribute)
 
     return output_attributes
+
+
+def get_answer_by_slug(attributes, slug):
+    if attributes:
+        for attribute in attributes:
+            for answer in attribute["answers"]:
+                if answer["question"] == slug:
+                    return {
+                        "score": attribute["score"],
+                        "choice": answer["choice"],
+                        "explanation": answer["explanation"],
+                    }
+    return None
 
 
 def assessment_score(attributes):

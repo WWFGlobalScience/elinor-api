@@ -1,4 +1,7 @@
+from io import BytesIO
+from datetime import datetime
 from django.db.models import Q
+from django.http import FileResponse
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -7,7 +10,10 @@ from django_filters import (
     ModelChoiceFilter,
     NumberFilter,
 )
-from rest_framework import serializers
+from rest_framework import serializers, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
+
 from .base import (
     BaseAPISerializer,
     BaseAPIFilterSet,
@@ -17,6 +23,7 @@ from .base import (
     ReadOnlyChoiceSerializer,
     UserSerializer,
 )
+from ..ingest.xlsx import AssessmentXLSX
 from ..models import (
     Assessment,
     AssessmentChange,
@@ -33,12 +40,16 @@ from ..permissions import (
     AssessmentReadOnlyOrAuthenticatedUserPermission,
     CollaboratorReadOnlyOrAuthenticatedUserPermission,
 )
+from ..utils import truthy
 from ..utils.assessment import (
     enforce_required_attributes,
     log_assessment_change,
     assessment_score,
     attribute_scores,
 )
+
+
+EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
 
 
 def get_assessment_related_queryset(user, model):
@@ -174,6 +185,48 @@ class AssessmentViewSet(BaseAPIViewSet):
         edited_assessment = serializer.save()
         enforce_required_attributes(edited_assessment)
         log_assessment_change(original_assessment, edited_assessment, user)
+
+    @action(detail=True, methods=["GET", "POST"])
+    def xlsx(self, request, pk, *args, **kwargs):
+        assessment = self.get_object()
+        assessment_xlsx = AssessmentXLSX(assessment)
+
+        if request.method == "GET":
+            assessment_xlsx.generate_from_assessment()
+            response_file = BytesIO()
+            assessment_xlsx.workbook.save(response_file)
+            response_file.seek(0)
+            response = FileResponse(response_file, content_type=EXCEL_MIME_TYPE)
+            response["Content-Length"] = len(response_file.getvalue())
+            date_string = str(datetime.now().date().isoformat())
+            filename = f"elinor-assessment-{assessment.pk}_{date_string}"
+            response["Content-Disposition"] = f'attachment; filename="{filename}.xlsx"'
+            return response
+
+        if request.method == "POST":
+            uploaded_file = request.FILES.get("file")
+            dryrun = truthy(request.data.get("dryrun"))
+            supported_mime_types = [
+                EXCEL_MIME_TYPE,
+                # TODO: maybe the old ones aren't needed?
+                "application/vnd.ms-excel",
+                "application/msexcel",
+            ]
+
+            if uploaded_file is None:
+                return Response("Missing file", status=status.HTTP_400_BAD_REQUEST)
+            # TODO: check filesize?
+
+            content_type = uploaded_file.content_type
+            if content_type not in supported_mime_types:
+                return Response(
+                    "File type not supported", status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # TODO
+            #  assessment_xlsx.load_from_file(uploaded_file)
+            #  try/except attempt to write; handle dryrun and exceptions
+            return Response("Not implmented", status=status.HTTP_200_OK)
 
 
 class AssessmentChangeSerializer(BaseAPISerializer):
