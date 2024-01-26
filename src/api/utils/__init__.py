@@ -1,5 +1,6 @@
 import re
 import subprocess
+from django.utils.html import strip_tags
 from typing import Optional
 
 
@@ -34,3 +35,14 @@ def slugify(text: str, separator: Optional[str] = "_") -> str:
     text = text.strip(" " + separator)
 
     return text
+
+
+def truthy(val):
+    return val in ("t", "T", "true", "True", "TRUE", True, 1)
+
+
+def strip_html(val):
+    val = val or ""
+    val = strip_tags(val)
+
+    return val.strip()
