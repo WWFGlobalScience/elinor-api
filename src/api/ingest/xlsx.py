@@ -1,11 +1,12 @@
 from copy import copy
-from openpyxl import Workbook
+from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Alignment, DEFAULT_FONT, Protection
 from openpyxl.utils import get_column_letter
+from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.worksheet.datavalidation import DataValidation
 # from openpyxl.worksheet.protection import SheetProtection
 
-from ..utils import strip_html
+from ..utils import unzip_file, strip_html
 from ..utils.assessment import (
     attribute_scores,
     enforce_required_attributes,
@@ -13,6 +14,8 @@ from ..utils.assessment import (
     questionlikerts,
 )
 
+ERROR = "error"
+WARNING = "warning"
 # TODO: create elinordata.org subdomain for this s3 bucket
 DOCUMENTATION_URL = "https://elinor-user-files.s3.amazonaws.com/dev/Document/2/Elinor_assessment_tool_protocol_v2022.1.pdf"
 bold = copy(DEFAULT_FONT)
@@ -38,6 +41,7 @@ class AssessmentXLSX:
         self.attribute_scores = attribute_scores(self.assessment)
         self.workbook = None
         self.xlsxfile = None
+        self.validations = {}
         self.ws_def = {
             "survey": {
                 "intro": {
@@ -212,10 +216,15 @@ class AssessmentXLSX:
         self.protect_sheet(ws_choices)
         self.protect_sheet(ws_survey, ["C", "D"])
 
-    def load_from_file(self, file_path):
-        pass
-        # or: do this outside the class, and then compare the key things that need validating against the class properties
-        # self.workbook = openpyxl.load_workbook(file_path)
+    def load_from_file(self, file):
+        try:
+            self.workbook = load_workbook(file, read_only=True)
+        except InvalidFileException as e:
+            self.validations["invalid_file_load"] = {"level": ERROR, "message": str(e)}
+
+        # validate file structure against ws_def; populate self.validations to be passed back as 400s
+        # populate self.answers
+        # then, self.ingest(dryrun); use serializers to save and return as appropriate
 
         # Extract worksheet names, column names, and static content
         # for sheet in self.workbook.sheetnames:
