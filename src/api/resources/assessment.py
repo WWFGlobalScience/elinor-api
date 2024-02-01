@@ -17,6 +17,7 @@ from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from tempfile import TemporaryDirectory
+from zipfile import BadZipFile
 
 from .base import (
     BaseAPISerializer,
@@ -27,7 +28,7 @@ from .base import (
     ReadOnlyChoiceSerializer,
     UserSerializer,
 )
-from ..ingest.xlsx import AssessmentXLSX
+from ..ingest.xlsx import AssessmentXLSX, ERROR
 from ..models import (
     Assessment,
     AssessmentChange,
@@ -214,31 +215,46 @@ class AssessmentViewSet(BaseAPIViewSet):
 
             if uploaded_file is None:
                 return Response("missing file", status=status.HTTP_400_BAD_REQUEST)
-            maximum_filesize = 10485760  # 10MB
-            if uploaded_file.size > maximum_filesize:
-                return Response(f"uploaded file larger than {maximum_filesize}")
-
             content_type = uploaded_file.content_type
             if content_type not in supported_mime_types:
                 return Response(
-                    "file type not supported", status=status.HTTP_400_BAD_REQUEST
+                    f"file type not supported; supported types: {', '.join(supported_mime_types)}",
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
+            maximum_filesize = 10485760  # 10MB
+            if uploaded_file.size > maximum_filesize:
+                return Response(
+                    f"uploaded file larger than {maximum_filesize}",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
             if content_type in settings.ZIP_MIME_TYPES:
                 with TemporaryDirectory() as tempdir:
                     temppath = Path(tempdir)
-                    dirs, files = unzip_file(uploaded_file, temppath)
-                    if len(files) != 1:
-                        return Response(
-                            "zip file contains more than one file, or is empty",
-                            status=status.HTTP_400_BAD_REQUEST,
-                        )
+                    try:
+                        dirs, files = unzip_file(uploaded_file, temppath)
+                        if len(files) != 1:
+                            return Response(
+                                "zip file contains more than one file, or is empty",
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                    except BadZipFile as e:
+                        return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+
                     with open(files[0], "rb") as f:
                         xlsxfile = io.BytesIO(f.read())
 
             assessment_xlsx.load_from_file(xlsxfile)
-            # TODO: check all the file checks thus far
-            # TODO: check to make sure in-mem files get cleaned up after response
             print(assessment_xlsx.validations)
+            errors = [
+                v for k, v in assessment_xlsx.validations.items() if v["level"] == ERROR
+            ]
+            if errors:
+                return Response(
+                    assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # TODO: assessment_xlsx.ingest(dryrun); use serializers to save and return as appropriate
             return Response("Not implemented", status=status.HTTP_200_OK)
 
 

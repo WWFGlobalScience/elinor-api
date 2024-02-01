@@ -4,15 +4,13 @@ from openpyxl.styles import Alignment, DEFAULT_FONT, Protection
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.worksheet.datavalidation import DataValidation
-# from openpyxl.worksheet.protection import SheetProtection
 
-from ..utils import unzip_file, strip_html
-from ..utils.assessment import (
-    attribute_scores,
-    enforce_required_attributes,
-    get_answer_by_slug,
-    questionlikerts,
-)
+# from openpyxl.worksheet.protection import SheetProtection
+from zipfile import BadZipFile
+
+from ..models.assessment import SurveyAnswerLikert
+from ..utils import strip_html
+from ..utils.assessment import enforce_required_attributes, questionlikerts
 
 ERROR = "error"
 WARNING = "warning"
@@ -38,7 +36,7 @@ class AssessmentXLSX:
         self.assessment = assessment
         enforce_required_attributes(self.assessment)
         self._questions = []
-        self.attribute_scores = attribute_scores(self.assessment)
+        self._answers = []
         self.workbook = None
         self.xlsxfile = None
         self.validations = {}
@@ -100,7 +98,36 @@ class AssessmentXLSX:
                     choice = attr.split("_")[1]
                     question.choices.append(f"{choice}: {strip_html(val)}")
                 self._questions.append(question)
+
         return self._questions
+
+    @property
+    def answers(self):
+        if not self._answers:
+            answers = (
+                SurveyAnswerLikert.objects.filter(assessment=self.assessment)
+                .select_related("question", "question__attribute")
+                .order_by(
+                    "question__attribute__order",
+                    "question__attribute__name",
+                    "question__number",
+                )
+            )
+
+            for a in answers:
+                self._answers.append(
+                    {
+                        "question": a.question.key,
+                        "choice": a.choice,
+                        "explanation": a.explanation,
+                    }
+                )
+
+        return self._answers
+
+    @answers.setter
+    def answers(self, answers_list):
+        pass
 
     def write_header(self, sheetname, section="columns"):
         _header_row = self.ws_def[sheetname][section]["row"]
@@ -153,6 +180,12 @@ class AssessmentXLSX:
             for cell in ws[col]:
                 cell.protection = Protection(locked=False)
 
+    def get_answer_by_slug(self, slug):
+        for answer in self.answers:
+            if answer["question"] == slug:
+                return answer
+        return None
+
     def get_choice_by_answer(self, question, choice):
         for question_choice in question.choices:
             val = int(question_choice.split(": ")[0])
@@ -183,9 +216,7 @@ class AssessmentXLSX:
             for question in self.questions:
                 if question.attribute == attribute:
                     qtext = f"{question.number}. {question.text}"
-                    answer = (
-                        get_answer_by_slug(self.attribute_scores, question.key) or {}
-                    )
+                    answer = self.get_answer_by_slug(question.key) or {}
                     choice = answer.get("choice", "")
                     choice_text = self.get_choice_by_answer(question, choice)
                     validation = self.add_survey_validation(question.key)
@@ -219,15 +250,17 @@ class AssessmentXLSX:
     def load_from_file(self, file):
         try:
             self.workbook = load_workbook(file, read_only=True)
-        except InvalidFileException as e:
-            self.validations["invalid_file_load"] = {"level": ERROR, "message": str(e)}
+        except (InvalidFileException, BadZipFile) as e:
+            # openpyxl uses zipfile to read file; if the file has an xlsx extension but isn't one, the
+            # exception message is about a zip file, which would be confusing to users. So we'll return our own.
+            self.validations["invalid_file_load"] = {
+                "level": ERROR,
+                "message": "invalid xlsx file",
+            }
 
-        # validate file structure against ws_def; populate self.validations to be passed back as 400s
-        # populate self.answers
-        # then, self.ingest(dryrun); use serializers to save and return as appropriate
-
-        # Extract worksheet names, column names, and static content
+        # TODO: validate file structure against ws_def; populate self.validations to be passed back as 400s
         # for sheet in self.workbook.sheetnames:
         #     self.worksheet_names.append(sheet)
         #     self.column_names[sheet] = [col.value for col in self.workbook[sheet][1]]
-        #     self.static_content[sheet] = [row for row in self.workbook[sheet].iter_rows(min_row=2, values_only=True)]
+
+        # TODO: populate (overwrite) self.answers

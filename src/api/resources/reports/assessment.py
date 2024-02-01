@@ -17,7 +17,7 @@ from ...utils.assessment import (
     attribute_scores,
     assessment_score,
     questionlikerts,
-    get_answer_by_slug,
+    get_attribute_answer,
 )
 
 
@@ -206,7 +206,7 @@ class AssessmentReportView(ReportView):
             choice_field = {choice_name: None}
             explanation_field = {explanation_name: None}
 
-            answer = get_answer_by_slug(obj, question.key)
+            answer = get_attribute_answer(obj, question.key)
             if answer:
                 if attrib_field and attrib_name:
                     attrib_field[attrib_name] = answer.get("score")

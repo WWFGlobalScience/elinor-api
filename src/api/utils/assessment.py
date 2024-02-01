@@ -46,7 +46,7 @@ def attribute_scores(assessment):
     return output_attributes
 
 
-def get_answer_by_slug(attributes, slug):
+def get_attribute_answer(attributes, slug):
     if attributes:
         for attribute in attributes:
             for answer in attribute["answers"]:
