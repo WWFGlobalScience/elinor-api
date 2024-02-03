@@ -245,6 +245,7 @@ class AssessmentViewSet(BaseAPIViewSet):
                         xlsxfile = io.BytesIO(f.read())
 
             assessment_xlsx.load_from_file(xlsxfile)
+            print(assessment_xlsx.answers)
             print(assessment_xlsx.validations)
             errors = [
                 v for k, v in assessment_xlsx.validations.items() if v["level"] == ERROR
@@ -254,8 +255,10 @@ class AssessmentViewSet(BaseAPIViewSet):
                     assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # TODO: assessment_xlsx.ingest(dryrun); use serializers to save and return as appropriate
+            # TODO: assessment_xlsx.submit_answers(dryrun); use serializers to save and return as appropriate
             return Response("Not implemented", status=status.HTTP_200_OK)
+        # TODO: check/add ignores for static methods etc.
+        # TODO Black, unused imports, etc.
 
 
 class AssessmentChangeSerializer(BaseAPISerializer):

@@ -31,12 +31,16 @@ wrapped_alignment = Alignment(
 )
 
 
+class InvalidChoice(Exception):
+    pass
+
+
 class AssessmentXLSX:
     def __init__(self, assessment):
         self.assessment = assessment
         enforce_required_attributes(self.assessment)
         self._questions = []
-        self._answers = []
+        self._answers = {}
         self.workbook = None
         self.xlsxfile = None
         self.validations = {}
@@ -115,19 +119,16 @@ class AssessmentXLSX:
             )
 
             for a in answers:
-                self._answers.append(
-                    {
-                        "question": a.question.key,
-                        "choice": a.choice,
-                        "explanation": a.explanation,
-                    }
-                )
+                self._answers[a.question.key] = {
+                    "choice": a.choice,
+                    "explanation": a.explanation,
+                }
 
         return self._answers
 
     @answers.setter
-    def answers(self, answers_list):
-        pass
+    def answers(self, answers_dict):
+        self._answers = answers_dict
 
     def write_header(self, sheetname, section="columns"):
         _header_row = self.ws_def[sheetname][section]["row"]
@@ -180,10 +181,10 @@ class AssessmentXLSX:
             for cell in ws[col]:
                 cell.protection = Protection(locked=False)
 
-    def get_answer_by_slug(self, slug):
-        for answer in self.answers:
-            if answer["question"] == slug:
-                return answer
+    def get_question_by_key(self, key):
+        for question in self.questions:
+            if question.key == key:
+                return question
         return None
 
     def get_choice_by_answer(self, question, choice):
@@ -192,6 +193,17 @@ class AssessmentXLSX:
             if choice == val:
                 return question_choice
         return ""
+
+    def get_user_choice(self, question, choice_str):
+        if not isinstance(choice_str, str):
+            return None
+
+        choice = choice_str.split(":")[0]
+        try:
+            choice_val = int(choice)
+            return choice_val
+        except:
+            raise InvalidChoice
 
     def generate_from_assessment(self):
         self.workbook = Workbook(iso_dates=True)
@@ -216,7 +228,7 @@ class AssessmentXLSX:
             for question in self.questions:
                 if question.attribute == attribute:
                     qtext = f"{question.number}. {question.text}"
-                    answer = self.get_answer_by_slug(question.key) or {}
+                    answer = self.answers.get(question.key, {}) or {}
                     choice = answer.get("choice", "")
                     choice_text = self.get_choice_by_answer(question, choice)
                     validation = self.add_survey_validation(question.key)
@@ -257,10 +269,42 @@ class AssessmentXLSX:
                 "level": ERROR,
                 "message": "invalid xlsx file",
             }
+            return
 
+        try:
+            ws_survey = self.workbook.get_sheet_by_name(self.sheetnames[0])
+        except KeyError as e:
+            self.validations["missing_sheet"] = {
+                "level": ERROR,
+                "message": f"missing sheet with name '{self.sheetnames[0]}'",
+            }
+            return
+
+        # TODO: consider making self.questions a dict too
         # TODO: validate file structure against ws_def; populate self.validations to be passed back as 400s
-        # for sheet in self.workbook.sheetnames:
-        #     self.worksheet_names.append(sheet)
-        #     self.column_names[sheet] = [col.value for col in self.workbook[sheet][1]]
+        # cells in self.ws_def[self.sheetnames[0]]["columns"]["row"] match (headers match)
 
-        # TODO: populate (overwrite) self.answers
+        start_row = self.ws_def[self.sheetnames[0]]["columns"]["row"] + 1
+        rows = ws_survey.iter_rows(min_row=start_row, values_only=True)
+        user_answers = {}
+        error_cells = []
+        for i, row in enumerate(rows, start=start_row):
+            key = row[1]  # column B is index 1 (0-indexed)
+            question = self.get_question_by_key(key)
+            if not question:
+                continue
+
+            user_answer = row[2]
+            try:
+                choice = self.get_user_choice(question, user_answer)
+                user_answers[key] = {"choice": choice, "explanation": row[3] or ""}
+            except InvalidChoice as e:
+                error_cells.append(f"C{i}")
+
+        if error_cells:
+            self.validations["invalid_choices"] = {
+                "level": ERROR,
+                "messaage": f"invalid choices in cells: {','.join(error_cells)}",
+            }
+
+        self.answers = user_answers
