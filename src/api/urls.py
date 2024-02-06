@@ -25,10 +25,9 @@ from .resources.assessment import (
     AssessmentChangeViewSet,
     AssessmentFlagViewSet,
     CollaboratorViewSet,
-    SurveyQuestionLikertViewSet,
-    SurveyAnswerLikertViewSet,
 )
 from .resources.reports.assessment import AssessmentReportView
+from .resources.survey import SurveyAnswerLikertViewSet, SurveyQuestionLikertViewSet
 
 
 router = ElinorDefaultRouter()

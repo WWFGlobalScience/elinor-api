@@ -1,6 +1,6 @@
 import csv
-from ..models.assessment import Assessment, SurveyAnswerLikert, SurveyQuestionLikert
-
+from ..models.assessment import Assessment
+from ..models.survey import SurveyQuestionLikert, SurveyAnswerLikert
 
 TEXT_SUFFIX = "_text"
 NON_QUESTION_FIELDS = [

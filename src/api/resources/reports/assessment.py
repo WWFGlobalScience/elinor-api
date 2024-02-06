@@ -8,7 +8,6 @@ from rest_framework import serializers
 from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
-from ..assessment import get_assessment_related_queryset
 from ..base import BaseAPIFilterSet
 from ...models import Assessment, ManagementArea
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
@@ -18,6 +17,7 @@ from ...utils.assessment import (
     assessment_score,
     questionlikerts,
     get_attribute_answer,
+    get_assessment_related_queryset,
 )
 
 

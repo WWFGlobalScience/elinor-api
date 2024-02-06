@@ -2,6 +2,7 @@ from django.contrib import admin
 from modeltranslation.admin import TranslationAdmin
 from .base import BaseAdmin
 from ..models.assessment import *
+from ..models.survey import SurveyAnswerLikert
 from ..utils.assessment import enforce_required_attributes, log_assessment_change
 
 
@@ -113,13 +114,3 @@ class AssessmentFlagAdmin(BaseAdmin):
         if obj.flag_type_other != "":
             return obj.flag_type_other
         return obj.flag_type
-
-
-@admin.register(SurveyQuestionLikert)
-class SurveyQuestionLikertAdmin(BaseAdmin, TranslationAdmin):
-    list_display = ["key", "attribute", "number"] + BaseAdmin.list_display
-
-
-@admin.register(SurveyAnswerLikert)
-class SurveyAnswerLikertAdmin(BaseAdmin, TranslationAdmin):
-    list_display = ["question", "assessment", "choice"] + BaseAdmin.list_display

@@ -1,8 +1,6 @@
 import io
-from io import BytesIO
 from datetime import datetime
 from django.conf import settings
-from django.db.models import Q
 from django.http import FileResponse
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
@@ -36,8 +34,6 @@ from ..models import (
     Collaborator,
     ManagementArea,
     Organization,
-    SurveyQuestionLikert,
-    SurveyAnswerLikert,
 )
 from ..permissions import (
     ReadOnly,
@@ -47,25 +43,13 @@ from ..permissions import (
 )
 from ..utils import truthy, unzip_file
 from ..utils.assessment import (
+    assessment_xlsx_has_errors,
     enforce_required_attributes,
     log_assessment_change,
     assessment_score,
     attribute_scores,
+    get_assessment_related_queryset,
 )
-
-
-def get_assessment_related_queryset(user, model):
-    lookup = model.assessment_lookup
-    if lookup != "":
-        lookup = f"{lookup}__"
-    qs = model.objects.all()
-    qry = Q(**{f"{lookup}status__lte": Assessment.FINALIZED}) & Q(
-        **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
-    )
-    if user.is_authenticated:
-        qs = model.objects.prefetch_related(f"{lookup}collaborators")
-        qry |= Q(**{f"{lookup}collaborators__user": user})
-    return qs.filter(qry).distinct()
 
 
 class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
@@ -122,6 +106,7 @@ class AssessmentSerializer(BaseAPISerializer):
     published_version = serializers.StringRelatedField(read_only=True)
     score = serializers.SerializerMethodField()
 
+    # noinspection PyMethodMayBeStatic
     def get_score(self, obj):
         return assessment_score(attribute_scores(obj))
 
@@ -195,7 +180,7 @@ class AssessmentViewSet(BaseAPIViewSet):
 
         if request.method == "GET":
             assessment_xlsx.generate_from_assessment()
-            response_file = BytesIO()
+            response_file = io.BytesIO()
             assessment_xlsx.workbook.save(response_file)
             response_file.seek(0)
             response = FileResponse(
@@ -245,20 +230,17 @@ class AssessmentViewSet(BaseAPIViewSet):
                         xlsxfile = io.BytesIO(f.read())
 
             assessment_xlsx.load_from_file(xlsxfile)
-            print(assessment_xlsx.answers)
-            print(assessment_xlsx.validations)
-            errors = [
-                v for k, v in assessment_xlsx.validations.items() if v["level"] == ERROR
-            ]
-            if errors:
+            if assessment_xlsx_has_errors(assessment_xlsx):
+                return Response(
+                    assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
+                )
+            assessment_xlsx.submit_answers(dryrun=dryrun)
+            if assessment_xlsx_has_errors(assessment_xlsx):
                 return Response(
                     assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
                 )
 
-            # TODO: assessment_xlsx.submit_answers(dryrun); use serializers to save and return as appropriate
-            return Response("Not implemented", status=status.HTTP_200_OK)
-        # TODO: check/add ignores for static methods etc.
-        # TODO Black, unused imports, etc.
+            return Response("Success", status=status.HTTP_200_OK)
 
 
 class AssessmentChangeSerializer(BaseAPISerializer):
@@ -389,56 +371,3 @@ class CollaboratorViewSet(BaseAPIViewSet):
                 f"You are the last admin for {assessment}. Create another admin before you relinquish."
             )
         super().perform_destroy(serializer)
-
-
-class SurveyQuestionLikertSerializer(BaseAPISerializer):
-    class Meta:
-        model = SurveyQuestionLikert
-        exclude = []
-
-
-class SurveyQuestionLikertFilterSet(BaseAPIFilterSet):
-    class Meta:
-        model = SurveyQuestionLikert
-        exclude = []
-
-
-class SurveyQuestionLikertViewSet(BaseAPIViewSet):
-    serializer_class = SurveyQuestionLikertSerializer
-    filter_class = SurveyQuestionLikertFilterSet
-    permission_classes = [ReadOnly]
-
-    def get_queryset(self):
-        return SurveyQuestionLikert.objects.all()
-
-
-class SurveyAnswerLikertSerializer(BaseAPISerializer):
-    assessment = PrimaryKeyExpandedField(
-        queryset=Assessment.objects.all(),
-        serializer=ReadOnlyChoiceSerializer,
-    )
-    question = PrimaryKeyExpandedField(
-        queryset=SurveyQuestionLikert.objects.all(),
-        serializer=SurveyQuestionLikertSerializer,
-    )
-
-    class Meta:
-        model = SurveyAnswerLikert
-        exclude = []
-
-
-class SurveyAnswerLikertFilterSet(BaseAPIFilterSet):
-    class Meta:
-        model = SurveyAnswerLikert
-        exclude = []
-
-
-class SurveyAnswerLikertViewSet(BaseAPIViewSet):
-    ordering = ["assessment", "question"]
-    serializer_class = SurveyAnswerLikertSerializer
-    filter_class = SurveyAnswerLikertFilterSet
-    search_fields = ["assessment__name", "question__key", "question__attribute__name"]
-    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
-
-    def get_queryset(self):
-        return get_assessment_related_queryset(self.request.user, SurveyAnswerLikert)

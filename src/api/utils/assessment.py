@@ -1,8 +1,16 @@
 from collections import defaultdict
 from django.conf import settings
-from ..models import Assessment, AssessmentChange, Attribute, SurveyAnswerLikert
-from ..models.base import EXCELLENT
-from ..models.assessment import SurveyQuestionLikert
+from django.db.models import Q
+
+from ..ingest import ERROR
+from ..models import (
+    Assessment,
+    AssessmentChange,
+    Attribute,
+    SurveyAnswerLikert,
+    SurveyQuestionLikert,
+)
+from ..models.survey import EXCELLENT
 
 
 def questionlikerts():
@@ -122,3 +130,22 @@ def enforce_required_attributes(assessment):
     missing_required = required_attributes.difference(assessment.attributes.all())
     if missing_required:
         assessment.attributes.add(*missing_required)
+
+
+def get_assessment_related_queryset(user, model):
+    lookup = model.assessment_lookup
+    if lookup != "":
+        lookup = f"{lookup}__"
+    qs = model.objects.all()
+    qry = Q(**{f"{lookup}status__lte": Assessment.FINALIZED}) & Q(
+        **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
+    )
+    if user.is_authenticated:
+        qs = model.objects.prefetch_related(f"{lookup}collaborators")
+        qry |= Q(**{f"{lookup}collaborators__user": user})
+    return qs.filter(qry).distinct()
+
+
+def assessment_xlsx_has_errors(assessment_xlsx):
+    errors = [v for k, v in assessment_xlsx.validations.items() if v["level"] == ERROR]
+    return len(errors) > 0
