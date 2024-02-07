@@ -173,6 +173,8 @@ APPNAME = "elinor"
 SITE_ID = 1
 GEO_PRECISION = 6  # to nearest 10 cm
 ATTRIBUTE_NORMALIZER = 10
+EXCEL_MIME_TYPES = ["application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"]
+ZIP_MIME_TYPES = ["application/zip", "application/x-zip-compressed"]
 
 REST_FRAMEWORK = {
     "COERCE_DECIMAL_TO_STRING": False,

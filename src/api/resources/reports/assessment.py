@@ -8,7 +8,6 @@ from rest_framework import serializers
 from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
-from ..assessment import get_assessment_related_queryset
 from ..base import BaseAPIFilterSet
 from ...models import Assessment, ManagementArea
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
@@ -17,7 +16,8 @@ from ...utils.assessment import (
     attribute_scores,
     assessment_score,
     questionlikerts,
-    get_answer_by_slug,
+    get_attribute_answer,
+    get_assessment_related_queryset,
 )
 
 
@@ -206,7 +206,7 @@ class AssessmentReportView(ReportView):
             choice_field = {choice_name: None}
             explanation_field = {explanation_name: None}
 
-            answer = get_answer_by_slug(obj, question.key)
+            answer = get_attribute_answer(obj, question.key)
             if answer:
                 if attrib_field and attrib_name:
                     attrib_field[attrib_name] = answer.get("score")

@@ -1,6 +1,6 @@
-from io import BytesIO
+import io
 from datetime import datetime
-from django.db.models import Q
+from django.conf import settings
 from django.http import FileResponse
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
@@ -10,9 +10,12 @@ from django_filters import (
     ModelChoiceFilter,
     NumberFilter,
 )
+from pathlib import Path
 from rest_framework import serializers, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
+from tempfile import TemporaryDirectory
+from zipfile import BadZipFile
 
 from .base import (
     BaseAPISerializer,
@@ -23,7 +26,7 @@ from .base import (
     ReadOnlyChoiceSerializer,
     UserSerializer,
 )
-from ..ingest.xlsx import AssessmentXLSX
+from ..ingest.xlsx import AssessmentXLSX, ERROR
 from ..models import (
     Assessment,
     AssessmentChange,
@@ -31,8 +34,6 @@ from ..models import (
     Collaborator,
     ManagementArea,
     Organization,
-    SurveyQuestionLikert,
-    SurveyAnswerLikert,
 )
 from ..permissions import (
     ReadOnly,
@@ -40,30 +41,15 @@ from ..permissions import (
     AssessmentReadOnlyOrAuthenticatedUserPermission,
     CollaboratorReadOnlyOrAuthenticatedUserPermission,
 )
-from ..utils import truthy
+from ..utils import truthy, unzip_file
 from ..utils.assessment import (
+    assessment_xlsx_has_errors,
     enforce_required_attributes,
     log_assessment_change,
     assessment_score,
     attribute_scores,
+    get_assessment_related_queryset,
 )
-
-
-EXCEL_MIME_TYPE = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-
-
-def get_assessment_related_queryset(user, model):
-    lookup = model.assessment_lookup
-    if lookup != "":
-        lookup = f"{lookup}__"
-    qs = model.objects.all()
-    qry = Q(**{f"{lookup}status__lte": Assessment.FINALIZED}) & Q(
-        **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
-    )
-    if user.is_authenticated:
-        qs = model.objects.prefetch_related(f"{lookup}collaborators")
-        qry |= Q(**{f"{lookup}collaborators__user": user})
-    return qs.filter(qry).distinct()
 
 
 class AssessmentCollaboratorSerializer(serializers.ModelSerializer):
@@ -120,6 +106,7 @@ class AssessmentSerializer(BaseAPISerializer):
     published_version = serializers.StringRelatedField(read_only=True)
     score = serializers.SerializerMethodField()
 
+    # noinspection PyMethodMayBeStatic
     def get_score(self, obj):
         return assessment_score(attribute_scores(obj))
 
@@ -193,10 +180,12 @@ class AssessmentViewSet(BaseAPIViewSet):
 
         if request.method == "GET":
             assessment_xlsx.generate_from_assessment()
-            response_file = BytesIO()
+            response_file = io.BytesIO()
             assessment_xlsx.workbook.save(response_file)
             response_file.seek(0)
-            response = FileResponse(response_file, content_type=EXCEL_MIME_TYPE)
+            response = FileResponse(
+                response_file, content_type=settings.EXCEL_MIME_TYPES[0]
+            )
             response["Content-Length"] = len(response_file.getvalue())
             date_string = str(datetime.now().date().isoformat())
             filename = f"elinor-assessment-{assessment.pk}_{date_string}"
@@ -205,28 +194,53 @@ class AssessmentViewSet(BaseAPIViewSet):
 
         if request.method == "POST":
             uploaded_file = request.FILES.get("file")
+            xlsxfile = uploaded_file
             dryrun = truthy(request.data.get("dryrun"))
-            supported_mime_types = [
-                EXCEL_MIME_TYPE,
-                # TODO: maybe the old ones aren't needed?
-                "application/vnd.ms-excel",
-                "application/msexcel",
-            ]
+            supported_mime_types = settings.EXCEL_MIME_TYPES + settings.ZIP_MIME_TYPES
 
             if uploaded_file is None:
-                return Response("Missing file", status=status.HTTP_400_BAD_REQUEST)
-            # TODO: check filesize?
-
+                return Response("missing file", status=status.HTTP_400_BAD_REQUEST)
             content_type = uploaded_file.content_type
             if content_type not in supported_mime_types:
                 return Response(
-                    "File type not supported", status=status.HTTP_400_BAD_REQUEST
+                    f"file type not supported; supported types: {', '.join(supported_mime_types)}",
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+            maximum_filesize = 10485760  # 10MB
+            if uploaded_file.size > maximum_filesize:
+                return Response(
+                    f"uploaded file larger than {maximum_filesize}",
+                    status=status.HTTP_400_BAD_REQUEST,
                 )
 
-            # TODO
-            #  assessment_xlsx.load_from_file(uploaded_file)
-            #  try/except attempt to write; handle dryrun and exceptions
-            return Response("Not implmented", status=status.HTTP_200_OK)
+            if content_type in settings.ZIP_MIME_TYPES:
+                with TemporaryDirectory() as tempdir:
+                    temppath = Path(tempdir)
+                    try:
+                        dirs, files = unzip_file(uploaded_file, temppath)
+                        if len(files) != 1:
+                            return Response(
+                                "zip file contains more than one file, or is empty",
+                                status=status.HTTP_400_BAD_REQUEST,
+                            )
+                    except BadZipFile as e:
+                        return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+
+                    with open(files[0], "rb") as f:
+                        xlsxfile = io.BytesIO(f.read())
+
+            assessment_xlsx.load_from_file(xlsxfile)
+            if assessment_xlsx_has_errors(assessment_xlsx):
+                return Response(
+                    assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
+                )
+            assessment_xlsx.submit_answers(dryrun=dryrun)
+            if assessment_xlsx_has_errors(assessment_xlsx):
+                return Response(
+                    assessment_xlsx.validations, status=status.HTTP_400_BAD_REQUEST
+                )
+
+            return Response("Success", status=status.HTTP_200_OK)
 
 
 class AssessmentChangeSerializer(BaseAPISerializer):
@@ -357,56 +371,3 @@ class CollaboratorViewSet(BaseAPIViewSet):
                 f"You are the last admin for {assessment}. Create another admin before you relinquish."
             )
         super().perform_destroy(serializer)
-
-
-class SurveyQuestionLikertSerializer(BaseAPISerializer):
-    class Meta:
-        model = SurveyQuestionLikert
-        exclude = []
-
-
-class SurveyQuestionLikertFilterSet(BaseAPIFilterSet):
-    class Meta:
-        model = SurveyQuestionLikert
-        exclude = []
-
-
-class SurveyQuestionLikertViewSet(BaseAPIViewSet):
-    serializer_class = SurveyQuestionLikertSerializer
-    filter_class = SurveyQuestionLikertFilterSet
-    permission_classes = [ReadOnly]
-
-    def get_queryset(self):
-        return SurveyQuestionLikert.objects.all()
-
-
-class SurveyAnswerLikertSerializer(BaseAPISerializer):
-    assessment = PrimaryKeyExpandedField(
-        queryset=Assessment.objects.all(),
-        serializer=ReadOnlyChoiceSerializer,
-    )
-    question = PrimaryKeyExpandedField(
-        queryset=SurveyQuestionLikert.objects.all(),
-        serializer=SurveyQuestionLikertSerializer,
-    )
-
-    class Meta:
-        model = SurveyAnswerLikert
-        exclude = []
-
-
-class SurveyAnswerLikertFilterSet(BaseAPIFilterSet):
-    class Meta:
-        model = SurveyAnswerLikert
-        exclude = []
-
-
-class SurveyAnswerLikertViewSet(BaseAPIViewSet):
-    ordering = ["assessment", "question"]
-    serializer_class = SurveyAnswerLikertSerializer
-    filter_class = SurveyAnswerLikertFilterSet
-    search_fields = ["assessment__name", "question__key", "question__attribute__name"]
-    permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
-
-    def get_queryset(self):
-        return get_assessment_related_queryset(self.request.user, SurveyAnswerLikert)

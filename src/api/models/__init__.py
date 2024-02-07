@@ -21,6 +21,5 @@ from .assessment import (
     AssessmentChange,
     AssessmentFlag,
     Collaborator,
-    SurveyQuestionLikert,
-    SurveyAnswerLikert,
 )
+from .survey import SurveyQuestionLikert, SurveyAnswerLikert

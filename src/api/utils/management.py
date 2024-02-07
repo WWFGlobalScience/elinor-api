@@ -1,4 +1,5 @@
 import zipfile
+from django.conf import settings
 from django.contrib.gis.gdal import DataSource
 from django.contrib.gis.gdal.error import GDALException
 from django.contrib.gis.gdal.geometries import MultiPolygon, OGRGeomType
@@ -11,7 +12,6 @@ from tempfile import TemporaryDirectory
 
 
 MAXIMUM_FILESIZE = 10485760  # 10MB
-ACCEPTED_FILETYPES = ("application/zip", "application/x-zip-compressed")
 ACCEPTED_EXTENSIONS = (".shp",)
 ACCEPTED_GEOGCS = ("GEOGCS",)
 ACCEPTED_EPSG = ("4326",)
@@ -166,7 +166,7 @@ def get_multipolygon_from_import_file(import_file_field):
 
     try:
         content_type = import_file.content_type
-        if content_type not in ACCEPTED_FILETYPES:
+        if content_type not in settings.ZIP_MIME_TYPES:
             raise ValidationError({field: _(f"Filetype not supported: {content_type}")})
         if import_file.size > MAXIMUM_FILESIZE:
             raise ValidationError(
