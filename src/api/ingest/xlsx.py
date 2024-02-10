@@ -117,11 +117,11 @@ class AssessmentXLSX:
         self.ws_def = WS_DEF
         self.cols = {
             "key": self.get_survey_col("key"),
-            "keyl": get_column_letter(self.get_survey_col("key")),
+            "keyl": get_column_letter(self.get_survey_col("key") + 1),
             "answer": self.get_survey_col("answer"),
-            "answerl": get_column_letter(self.get_survey_col("answer")),
+            "answerl": get_column_letter(self.get_survey_col("answer") + 1),
             "explanation": self.get_survey_col("explanation"),
-            "explanationl": get_column_letter(self.get_survey_col("explanation")),
+            "explanationl": get_column_letter(self.get_survey_col("explanation") + 1),
         }
 
     @property
@@ -345,8 +345,14 @@ class AssessmentXLSX:
                 "level": ERROR,
                 "message": "invalid xlsx file",
             }
-            return
-        self.validate_header("survey")
+        try:
+            for sheet in self.ws_def.keys():
+                self.validate_header(sheet)
+        except KeyError as e:
+            self.validations["invalid_sheet"] = {
+                "level": ERROR,
+                "message": str(e).strip("'"),
+            }
         if assessment_xlsx_has_errors(self):
             return
 
