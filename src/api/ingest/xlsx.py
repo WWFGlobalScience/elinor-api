@@ -345,8 +345,14 @@ class AssessmentXLSX:
                 "level": ERROR,
                 "message": "invalid xlsx file",
             }
-            return
-        self.validate_header("survey")
+        try:
+            for sheet in self.ws_def.keys():
+                self.validate_header(sheet)
+        except KeyError as e:
+            self.validations["invalid_sheet"] = {
+                "level": ERROR,
+                "message": str(e).strip("'"),
+            }
         if assessment_xlsx_has_errors(self):
             return
 
