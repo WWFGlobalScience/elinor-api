@@ -117,11 +117,11 @@ class AssessmentXLSX:
         self.ws_def = WS_DEF
         self.cols = {
             "key": self.get_survey_col("key"),
-            "keyl": get_column_letter(self.get_survey_col("key")),
+            "keyl": get_column_letter(self.get_survey_col("key") + 1),
             "answer": self.get_survey_col("answer"),
-            "answerl": get_column_letter(self.get_survey_col("answer")),
+            "answerl": get_column_letter(self.get_survey_col("answer") + 1),
             "explanation": self.get_survey_col("explanation"),
-            "explanationl": get_column_letter(self.get_survey_col("explanation")),
+            "explanationl": get_column_letter(self.get_survey_col("explanation") + 1),
         }
 
     @property
