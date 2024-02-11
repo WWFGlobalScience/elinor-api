@@ -239,16 +239,23 @@ class AssessmentXLSX:
     def validate_header(self, sheetname):
         sheet = self.workbook.get_sheet_by_name(sheetname)
         header_row = self.ws_def[sheetname]["columns"]["row"]
-        user_header = list(
+        user_header_row = list(
             sheet.iter_rows(min_row=header_row, max_row=header_row, values_only=True)
-        )[0]
+        )
+        if not user_header_row:
+            self.validations["invalid_header"] = {
+                "level": ERROR,
+                "message": f"no header found for sheet {sheetname}",
+            }
+            return
+        user_header = user_header_row[0]
+
         header_error_cells = []
         for i, user_cell in enumerate(user_header, start=1):
             col = get_column_letter(i)
             header_cell = self.ws_def[sheetname]["columns"]["header"][i - 1]
             if user_cell != header_cell["content"]:
                 header_error_cells.append(f"{col}{header_row}")
-                # print(f"{col}{header_row} {user_cell} {header_cell}")
 
         if header_error_cells:
             self.validations["invalid_header_cells"] = {
@@ -365,7 +372,8 @@ class AssessmentXLSX:
         if user_assessmment_id != self.assessment.pk:
             self.validations["assessment_id_mismatch"] = {
                 "level": ERROR,
-                "message": f"assessment id {user_assessmment_id} in B{titlecrow} does not match requested assessment {self.assessment.pk}",
+                "message": f"assessment id {user_assessmment_id} in B{titlecrow} does not "
+                f"match requested assessment {self.assessment.pk}",
             }
 
         try:
