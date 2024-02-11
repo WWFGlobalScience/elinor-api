@@ -37,8 +37,18 @@ wrapped_alignment = Alignment(
 
 WS_DEF = {
     "survey": {
-        "intro": {
+        "title": {
             "row": 1,
+            "header": [
+                {
+                    "content": "",
+                    "font": bold14pt,
+                },
+                {},
+            ],
+        },
+        "intro": {
+            "row": 2,
             "header": [
                 {
                     "content": "Please make sure you read our protocol before answering this survey:",
@@ -49,7 +59,7 @@ WS_DEF = {
             ],
         },
         "columns": {
-            "row": 3,
+            "row": 4,
             "header": [
                 {"content": "Survey Question", "font": bold14pt, "width": 80},
                 {"content": "key", "hidden": True},
@@ -229,16 +239,23 @@ class AssessmentXLSX:
     def validate_header(self, sheetname):
         sheet = self.workbook.get_sheet_by_name(sheetname)
         header_row = self.ws_def[sheetname]["columns"]["row"]
-        user_header = list(
+        user_header_row = list(
             sheet.iter_rows(min_row=header_row, max_row=header_row, values_only=True)
-        )[0]
+        )
+        if not user_header_row:
+            self.validations["invalid_header"] = {
+                "level": ERROR,
+                "message": f"no header found for sheet {sheetname}",
+            }
+            return
+        user_header = user_header_row[0]
+
         header_error_cells = []
         for i, user_cell in enumerate(user_header, start=1):
             col = get_column_letter(i)
             header_cell = self.ws_def[sheetname]["columns"]["header"][i - 1]
             if user_cell != header_cell["content"]:
                 header_error_cells.append(f"{col}{header_row}")
-                # print(f"{col}{header_row} {user_cell} {header_cell}")
 
         if header_error_cells:
             self.validations["invalid_header_cells"] = {
@@ -286,6 +303,10 @@ class AssessmentXLSX:
         self.workbook.worksheets[0].title = self.sheetnames[0]
         self.workbook.create_sheet(self.sheetnames[1])
 
+        self.write_header(self.sheetnames[0], section="title")
+        titlecrow = self.ws_def[self.sheetnames[0]]["title"]["row"]
+        self.ws_survey.cell(row=titlecrow, column=1, value=self.assessment.name)
+        self.ws_survey.cell(row=titlecrow, column=2, value=self.assessment.pk)
         self.write_header(self.sheetnames[0], section="intro")
         self.write_header(self.sheetnames[0])
         self.write_header(self.sheetnames[1])
@@ -335,7 +356,7 @@ class AssessmentXLSX:
         self.protect_sheet(self.ws_choices)
         self.protect_sheet(self.ws_survey, ["C", "D"])
 
-    def load_from_file(self, file):
+    def check_file_structure(self, file):
         try:
             self.workbook = load_workbook(file, read_only=True)
         except (InvalidFileException, BadZipFile):
@@ -345,6 +366,16 @@ class AssessmentXLSX:
                 "level": ERROR,
                 "message": "invalid xlsx file",
             }
+
+        titlecrow = self.ws_def[self.sheetnames[0]]["title"]["row"]
+        user_assessmment_id = self.ws_survey.cell(row=titlecrow, column=2).value
+        if user_assessmment_id != self.assessment.pk:
+            self.validations["assessment_id_mismatch"] = {
+                "level": ERROR,
+                "message": f"assessment id {user_assessmment_id} in B{titlecrow} does not "
+                f"match requested assessment {self.assessment.pk}",
+            }
+
         try:
             for sheet in self.ws_def.keys():
                 self.validate_header(sheet)
@@ -353,6 +384,9 @@ class AssessmentXLSX:
                 "level": ERROR,
                 "message": str(e).strip("'"),
             }
+
+    def load_from_file(self, file):
+        self.check_file_structure(file)
         if assessment_xlsx_has_errors(self):
             return
 
