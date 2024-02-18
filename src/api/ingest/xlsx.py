@@ -16,7 +16,20 @@ from ..utils.assessment import (
     enforce_required_attributes,
     questionlikerts,
 )
-from . import ERROR
+from . import (
+    ingest_400,
+    ERROR,
+    MISSING_SHEET,
+    INVALID_HEADER,
+    INVALID_HEADER_CELLS,
+    INVALID_FILE_LOAD,
+    ASSESSMENT_ID_MISMATCH,
+    INVALID_SHEET,
+    INVALID_QUESTIONS,
+    INVALID_CHOICES,
+    SURVEYANSWERLIKERTSERIALIZER,
+    ANSWER_SAVE,
+)
 
 
 # TODO: create elinordata.org subdomain for this s3 bucket
@@ -147,10 +160,12 @@ class AssessmentXLSX:
             sheet = self.workbook.get_sheet_by_name(sheetname)
             setattr(self, sheetprop, sheet)
         except KeyError:
-            self.validations["missing_sheet"] = {
-                "level": ERROR,
-                "message": f"missing sheet with name '{sheetname}'",
-            }
+            error = ingest_400(
+                MISSING_SHEET,
+                f"missing sheet with name '{sheetname}'",
+                {"sheetname": sheetname},
+            )
+            self.validations.update(error)
 
     def get_survey_col(self, column_name):
         for i, cell in enumerate(self.ws_def[self.sheetnames[0]]["columns"]["header"]):
@@ -243,10 +258,12 @@ class AssessmentXLSX:
             sheet.iter_rows(min_row=header_row, max_row=header_row, values_only=True)
         )
         if not user_header_row:
-            self.validations["invalid_header"] = {
-                "level": ERROR,
-                "message": f"no header found for sheet {sheetname}",
-            }
+            error = ingest_400(
+                INVALID_HEADER,
+                f"no header found for sheet {sheetname}",
+                {"sheetname": sheetname},
+            )
+            self.validations.update(error)
             return
         user_header = user_header_row[0]
 
@@ -258,10 +275,12 @@ class AssessmentXLSX:
                 header_error_cells.append(f"{col}{header_row}")
 
         if header_error_cells:
-            self.validations["invalid_header_cells"] = {
-                "level": ERROR,
-                "message": f"invalid headers in cells: {','.join(header_error_cells)}",
-            }
+            error = ingest_400(
+                INVALID_HEADER_CELLS,
+                f"invalid headers in cells: {','.join(header_error_cells)}",
+                {"header_error_cells": header_error_cells},
+            )
+            self.validations.update(error)
 
     def add_survey_validation(self, qkey):
         val_formula = ""
@@ -362,28 +381,29 @@ class AssessmentXLSX:
         except (InvalidFileException, BadZipFile):
             # openpyxl uses zipfile to read file; if the file has an xlsx extension but isn't one, the
             # exception message is about a zip file, which would be confusing to users. So we'll return our own.
-            self.validations["invalid_file_load"] = {
-                "level": ERROR,
-                "message": "invalid xlsx file",
-            }
+            error = ingest_400(INVALID_FILE_LOAD, "invalid xlsx file")
+            self.validations.update(error)
 
         titlecrow = self.ws_def[self.sheetnames[0]]["title"]["row"]
         user_assessmment_id = self.ws_survey.cell(row=titlecrow, column=2).value
         if user_assessmment_id != self.assessment.pk:
-            self.validations["assessment_id_mismatch"] = {
-                "level": ERROR,
-                "message": f"assessment id {user_assessmment_id} in B{titlecrow} does not "
-                f"match requested assessment {self.assessment.pk}",
-            }
+            error = ingest_400(
+                ASSESSMENT_ID_MISMATCH,
+                f"assessment id {user_assessmment_id} in B{titlecrow} does not match requested assessment {self.assessment.pk}",
+                {
+                    "user_assessmment_id": user_assessmment_id,
+                    "cell": f"B{titlecrow}",
+                    "assessment_id": self.assessment.pk,
+                },
+            )
+            self.validations.update(error)
 
         try:
             for sheet in self.ws_def.keys():
                 self.validate_header(sheet)
         except KeyError as e:
-            self.validations["invalid_sheet"] = {
-                "level": ERROR,
-                "message": str(e).strip("'"),
-            }
+            error = ingest_400(INVALID_SHEET, str(e).strip("'"))
+            self.validations.update(error)
 
     def load_from_file(self, file):
         self.check_file_structure(file)
@@ -416,15 +436,19 @@ class AssessmentXLSX:
                 choice_error_cells.append(f"{self.cols['answerl']}{i}")
 
         if question_error_cells:
-            self.validations["invalid_questions"] = {
-                "level": ERROR,
-                "messaage": f"invalid question keys in cells: {','.join(question_error_cells)}",
-            }
+            error = ingest_400(
+                INVALID_QUESTIONS,
+                f"invalid question keys in cells: {','.join(question_error_cells)}",
+                {"question_error_cells": question_error_cells},
+            )
+            self.validations.update(error)
         if choice_error_cells:
-            self.validations["invalid_choices"] = {
-                "level": ERROR,
-                "messaage": f"invalid choices in cells: {','.join(choice_error_cells)}",
-            }
+            error = ingest_400(
+                INVALID_CHOICES,
+                f"invalid choices in cells: {','.join(choice_error_cells)}",
+                {"choice_error_cells": choice_error_cells},
+            )
+            self.validations.update(error)
 
         self.answers = user_answers
 
@@ -458,10 +482,12 @@ class AssessmentXLSX:
 
         if answer_serializer_errors:
             # TODO: attach cell references to self.answers, and store with validations
-            self.validations["SurveyAnswerLikertSerializer"] = {
-                "level": ERROR,
-                "errors": answer_serializer_errors,
-            }
+            error = ingest_400(
+                SURVEYANSWERLIKERTSERIALIZER,
+                "invalid answers",
+                {"errors": answer_serializer_errors},
+            )
+            self.validations.update(error)
             return
 
         with transaction.atomic():
@@ -475,9 +501,9 @@ class AssessmentXLSX:
                 if dryrun is True or successful_save is False:
                     transaction.savepoint_rollback(sid)
                     if successful_save is False:
-                        self.validations["answer_save"] = {
-                            "level": ERROR,
-                            "message": "error saving answers to database",
-                        }
+                        error = ingest_400(
+                            ANSWER_SAVE, "error saving answers to database"
+                        )
+                        self.validations.update(error)
                 else:
                     transaction.savepoint_commit(sid)

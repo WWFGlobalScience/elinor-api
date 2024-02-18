@@ -26,7 +26,15 @@ from .base import (
     ReadOnlyChoiceSerializer,
     UserSerializer,
 )
-from ..ingest.xlsx import AssessmentXLSX, ERROR
+from ..ingest import (
+    ingest_400,
+    MISSING_FILE,
+    UNSUPPORTED_FILE_TYPE,
+    FILE_TOO_LARGE,
+    UNSUPPORTED_ZIP,
+    INVALID_ZIP,
+)
+from ..ingest.xlsx import AssessmentXLSX
 from ..models import (
     Assessment,
     AssessmentChange,
@@ -199,19 +207,24 @@ class AssessmentViewSet(BaseAPIViewSet):
             supported_mime_types = settings.EXCEL_MIME_TYPES + settings.ZIP_MIME_TYPES
 
             if uploaded_file is None:
-                return Response("missing file", status=status.HTTP_400_BAD_REQUEST)
+                error = ingest_400(MISSING_FILE, "missing file")
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
             content_type = uploaded_file.content_type
             if content_type not in supported_mime_types:
-                return Response(
+                error = ingest_400(
+                    UNSUPPORTED_FILE_TYPE,
                     f"file type not supported; supported types: {', '.join(supported_mime_types)}",
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"supported_mime_types": supported_mime_types},
                 )
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
             maximum_filesize = 10485760  # 10MB
             if uploaded_file.size > maximum_filesize:
-                return Response(
+                error = ingest_400(
+                    FILE_TOO_LARGE,
                     f"uploaded file larger than {maximum_filesize}",
-                    status=status.HTTP_400_BAD_REQUEST,
+                    {"maximum_filesize": maximum_filesize},
                 )
+                return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
             if content_type in settings.ZIP_MIME_TYPES:
                 with TemporaryDirectory() as tempdir:
@@ -219,12 +232,15 @@ class AssessmentViewSet(BaseAPIViewSet):
                     try:
                         dirs, files = unzip_file(uploaded_file, temppath)
                         if len(files) != 1:
-                            return Response(
+                            error = ingest_400(
+                                UNSUPPORTED_ZIP,
                                 "zip file contains more than one file, or is empty",
-                                status=status.HTTP_400_BAD_REQUEST,
+                                {"num_files": len(files)},
                             )
+                            return Response(error, status=status.HTTP_400_BAD_REQUEST)
                     except BadZipFile as e:
-                        return Response(str(e), status=status.HTTP_400_BAD_REQUEST)
+                        error = ingest_400(INVALID_ZIP, str(e))
+                        return Response(error, status=status.HTTP_400_BAD_REQUEST)
 
                     with open(files[0], "rb") as f:
                         xlsxfile = io.BytesIO(f.read())
