@@ -1,11 +1,12 @@
 from django.urls import path, re_path
 from .resources.base import (
-    health,
-    ElinorDefaultRouter,
     assessmentversion,
+    countries_view,
+    health,
     ActiveLanguageViewset,
     AttributeViewSet,
     DocumentViewSet,
+    ElinorDefaultRouter,
     GovernanceTypeViewSet,
     ManagementAuthorityViewSet,
     OrganizationViewSet,
@@ -69,4 +70,5 @@ api_urls = router.urls + [
         name="contactassessmentadmin",
     ),
     path("contactelinoradmins", contact_elinor_admins, name="contactelinoradmin"),
+    path("countries", countries_view, name="countries"),
 ]
