@@ -30,6 +30,7 @@ from ..models import (
     Attribute,
     Document,
     GovernanceType,
+    ManagementArea,
     ManagementAuthority,
     Organization,
     ProtectedArea,
@@ -42,6 +43,7 @@ from ..permissions import (
     ReadOnly,
     ReadOnlyOrAuthenticatedCreate,
 )
+from ..utils import truthy
 
 try:
     from allauth.account.utils import send_email_confirmation, setup_user_email
@@ -54,7 +56,7 @@ User = get_user_model()
 user_choice_qs = User.objects.order_by("username")
 
 
-@api_view(["GET", "HEAD", "OPTIONS"])
+@api_view(permissions.SAFE_METHODS)
 @authentication_classes([])
 @permission_classes((AllowAny,))
 def health(request):
@@ -463,6 +465,37 @@ class RegionViewSet(BaseChoiceViewSet):
 
     def get_queryset(self):
         return Region.objects.all()
+
+
+class CountrySerializer(serializers.Serializer):
+    code = serializers.CharField()
+    name = serializers.CharField()
+
+    class Meta:
+        fields = ("code", "name")
+
+
+@api_view(permissions.SAFE_METHODS)
+@authentication_classes([])
+@permission_classes((ReadOnly,))
+def countries_view(request):
+    countries_list = [{"code": code, "name": name} for code, name in countries]
+
+    used_in_mas = truthy(request.query_params.get("used_in_mas"))
+    if used_in_mas:
+        management_areas = ManagementArea.objects.all()
+        country_codes = set()
+        for ma in management_areas:
+            country_codes.update(ma.countries)
+        countries_list = [
+            {"code": code, "name": name}
+            for code, name in countries
+            if code in country_codes
+        ]
+
+    serializer = CountrySerializer(data=countries_list, many=True)
+    serializer.is_valid()
+    return Response(serializer.validated_data)
 
 
 class StakeholderGroupSerializer(BaseAPISerializer):
