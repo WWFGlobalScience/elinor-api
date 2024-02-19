@@ -8,16 +8,17 @@ from rest_framework import serializers
 from rest_framework_gis.fields import GeometryField, GeometrySerializerMethodField
 from rest_framework_gis.serializers import GeoFeatureModelSerializer
 from . import BaseReportSerializer, ReportView
-from ..assessment import get_assessment_related_queryset
 from ..base import BaseAPIFilterSet
-from ...models import (
-    Assessment,
-    ManagementArea,
-    SurveyQuestionLikert,
-)
+from ...models import Assessment, ManagementArea
 from ...permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 from ...utils import slugify
-from ...utils.assessment import attribute_scores, assessment_score
+from ...utils.assessment import (
+    attribute_scores,
+    assessment_score,
+    questionlikerts,
+    get_attribute_answer,
+    get_assessment_related_queryset,
+)
 
 
 # TODO: deal with ManagementAreaZone, parent/containedby
@@ -205,7 +206,7 @@ class AssessmentReportView(ReportView):
             choice_field = {choice_name: None}
             explanation_field = {explanation_name: None}
 
-            answer = self.get_answer_by_slug(obj, attribute.name, question.key)
+            answer = get_attribute_answer(obj, question.key)
             if answer:
                 if attrib_field and attrib_name:
                     attrib_field[attrib_name] = answer.get("score")
@@ -220,20 +221,5 @@ class AssessmentReportView(ReportView):
     @property
     def question_likerts(self):
         if not self._question_likerts:
-            questions = SurveyQuestionLikert.objects.select_related(
-                "attribute"
-            ).order_by("attribute__order", "attribute__name", "number")
-            self._question_likerts = questions
+            self._question_likerts = questionlikerts()
         return self._question_likerts
-
-    def get_answer_by_slug(self, attributes, attrib_name, slug):
-        if attributes:
-            for attribute in attributes:
-                for answer in attribute["answers"]:
-                    if answer["question"] == slug:
-                        return {
-                            "score": attribute["score"],
-                            "choice": answer["choice"],
-                            "explanation": answer["explanation"],
-                        }
-        return None

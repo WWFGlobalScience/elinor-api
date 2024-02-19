@@ -4,18 +4,6 @@ from django.utils.translation import ugettext_lazy as _
 from django_countries.fields import CountryField
 
 
-POOR = 0
-AVERAGE = 1
-GOOD = 2
-EXCELLENT = 3
-LIKERT_CHOICES = (
-    (POOR, _(f"poor [{POOR}]")),
-    (AVERAGE, _(f"average [{AVERAGE}]")),
-    (GOOD, _(f"good [{GOOD}]")),
-    (EXCELLENT, _(f"excellent [{EXCELLENT}]")),
-)
-
-
 def latest_version():
     latest_version = AssessmentVersion.objects.order_by(
         "-year", "-major_version"

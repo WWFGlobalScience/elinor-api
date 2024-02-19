@@ -1,6 +1,8 @@
 import re
 import subprocess
+from django.utils.html import strip_tags
 from typing import Optional
+from zipfile import ZipFile
 
 
 def run_subprocess(command, std_input=None, to_file=None):
@@ -34,3 +36,22 @@ def slugify(text: str, separator: Optional[str] = "_") -> str:
     text = text.strip(" " + separator)
 
     return text
+
+
+def truthy(val):
+    return val in ("t", "T", "true", "True", "TRUE", True, 1)
+
+
+def strip_html(val):
+    val = val or ""
+    val = strip_tags(val)
+
+    return val.strip()
+
+
+def unzip_file(file, temppath):
+    zf = ZipFile(file)
+    zf.extractall(temppath)
+    dirs = [f for f in temppath.iterdir() if temppath.joinpath(f).is_dir()]
+    files = [f for f in temppath.iterdir() if temppath.joinpath(f).is_file()]
+    return dirs, files

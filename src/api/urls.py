@@ -1,11 +1,12 @@
 from django.urls import path, re_path
 from .resources.base import (
-    health,
-    ElinorDefaultRouter,
     assessmentversion,
+    countries_view,
+    health,
     ActiveLanguageViewset,
     AttributeViewSet,
     DocumentViewSet,
+    ElinorDefaultRouter,
     GovernanceTypeViewSet,
     ManagementAuthorityViewSet,
     OrganizationViewSet,
@@ -25,10 +26,9 @@ from .resources.assessment import (
     AssessmentChangeViewSet,
     AssessmentFlagViewSet,
     CollaboratorViewSet,
-    SurveyQuestionLikertViewSet,
-    SurveyAnswerLikertViewSet,
 )
 from .resources.reports.assessment import AssessmentReportView
+from .resources.survey import SurveyAnswerLikertViewSet, SurveyQuestionLikertViewSet
 
 
 router = ElinorDefaultRouter()
@@ -70,4 +70,5 @@ api_urls = router.urls + [
         name="contactassessmentadmin",
     ),
     path("contactelinoradmins", contact_elinor_admins, name="contactelinoradmin"),
+    path("countries", countries_view, name="countries"),
 ]
