@@ -118,20 +118,15 @@ class AssessmentSerializer(BaseAPISerializer):
     def get_score(self, obj):
         return assessment_score(attribute_scores(obj))
 
-    # def validate(self, data):
-    #     required_attributes = Attribute.objects.filter(required=True)
-    #     _attributes = []
-    #     if self.instance:  # existing attributes, if any
-    #         _attributes = self.instance.attributes.all()
-    #     if data and "attributes" in data:  # proposed new attributes, if any
-    #         _attributes = data["attributes"]
-    #     missing_required = [str(ra) for ra in required_attributes if ra not in _attributes]
-    #
-    #     if missing_required:
-    #         msg = f"May not save without including required attributes: {', '.join(missing_required)}"
-    #         raise serializers.ValidationError({"attributes": _(msg)})
-    #
-    #     return data
+    def validate_checkout(self, value):
+        request_user = self.context["request"].user
+
+        if value is not None and value != request_user:
+            raise serializers.ValidationError(
+                "May not set checkout to a user other than the requester."
+            )
+
+        return value
 
     class Meta:
         model = Assessment

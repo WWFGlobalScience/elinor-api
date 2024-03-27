@@ -133,6 +133,13 @@ class Assessment(BaseModel):
     strengths_explanation = models.TextField(blank=True)
     needs_explanation = models.TextField(blank=True)
     context = models.TextField(blank=True)
+    checkout = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        blank=True,
+        null=True,
+        on_delete=models.PROTECT,
+        related_name="checked_out_assessments",
+    )
 
     @property
     def required_questions(self):

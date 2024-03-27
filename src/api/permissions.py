@@ -59,30 +59,20 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
         "context",
     ]
 
-    def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
-            return True
-
-        user = request.user
-        return user.is_authenticated
-
-    def has_object_permission(self, request, view, obj):
-        user = request.user
-        if request.method in permissions.SAFE_METHODS or user.is_superuser:
-            return True
-
+    def user_assessment_permissions(self, request, serializer, obj, user):
         assessment = get_assessment_or_none(obj)
         if assessment:
+            # If existing assessment is already checked out by another user, 403
+            if assessment.checkout is not None and assessment.checkout != user:
+                raise PermissionDenied(
+                    f"Assessment {assessment} is checked out by {assessment.checkout}."
+                )
+
             user_collaborator = get_collaborator(assessment, user)
             if user_collaborator.is_admin:
                 if not assessment.is_finalized:
                     return True
-                elif request.method in ("PUT", "PATCH"):
-                    partial = request.method == "PATCH"
-                    serializer = view.get_serializer(
-                        obj, data=request.data, partial=partial
-                    )
-                    serializer.is_valid(raise_exception=True)
+                elif serializer:
                     return set(serializer.validated_data.keys()).issubset(
                         self.PUBLISHED_MODIFIABLE_FIELDS
                     )
@@ -92,29 +82,53 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
                     "PATCH",
                 )
 
-        return False
+        return True
+
+    def has_permission(self, request, view):
+        user = request.user
+        if request.method in permissions.SAFE_METHODS or user.is_superuser:
+            return True
+
+        if request.method == "POST" and view.basename != "assessment":
+            serializer = view.get_serializer(data=request.data)
+            serializer.is_valid(raise_exception=True)
+            model_class = view.get_queryset().model
+            obj = model_class(**serializer.validated_data)
+            # check perms for the assessment related to proposed new obj
+            return self.user_assessment_permissions(request, serializer, obj, user)
+
+        return user.is_authenticated
+
+    def has_object_permission(self, request, view, obj):
+        user = request.user
+        if request.method in permissions.SAFE_METHODS or user.is_superuser:
+            return True
+
+        serializer = None
+        if request.method in ("PUT", "PATCH"):
+            partial = request.method == "PATCH"
+            serializer = view.get_serializer(obj, data=request.data, partial=partial)
+            serializer.is_valid(raise_exception=True)
+        return self.user_assessment_permissions(request, serializer, obj, user)
 
 
 class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission):
     def has_permission(self, request, view):
-        if request.method in permissions.SAFE_METHODS:
+        user = request.user
+        if request.method in permissions.SAFE_METHODS or user.is_superuser:
             return True
 
-        user = request.user
-        if user.is_authenticated:
-            if request.method == "POST":
-                assessment_id = request.data.get("assessment")
-                try:
-                    assessment = Assessment.objects.get(pk=assessment_id)
-                except Assessment.DoesNotExist:
-                    raise serializers.ValidationError(
-                        {"assessment": "Missing assessment id"}
-                    )
-                user_collaborator = get_collaborator(assessment, user)
-                return user_collaborator.is_admin
-            return True  # PUT/PATCH/DELETE handled with object permissions
-
-        return False
+        if request.method == "POST":
+            assessment_id = request.data.get("assessment")
+            try:
+                assessment = Assessment.objects.get(pk=assessment_id)
+            except Assessment.DoesNotExist:
+                raise serializers.ValidationError(
+                    {"assessment": "Missing assessment id"}
+                )
+            user_collaborator = get_collaborator(assessment, user)
+            return user_collaborator.is_admin
+        return user.is_authenticated
 
     def has_object_permission(self, request, view, obj):
         user = request.user
