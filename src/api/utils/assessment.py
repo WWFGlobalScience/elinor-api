@@ -2,6 +2,7 @@ from collections import defaultdict
 from django.conf import settings
 from django.db.models import Q
 
+from .email import notify_assessment_admins
 from ..ingest import ERROR
 from ..models import (
     Assessment,
@@ -123,6 +124,25 @@ def log_assessment_change(original_assessment, updated_assessment, user):
     #         user=user,
     #         event_type=AssessmentChange.EDIT
     #     )
+
+
+def notify_assessment_checkout(original_assessment, updated_assessment, user):
+    if original_assessment.checkout == updated_assessment.checkout:
+        return
+
+    # assume business logic that checkout must be same as user who performs change
+    user_name = user.get_full_name()
+    subject = f"assessment {updated_assessment.name} checked out by {user_name}"
+    message = f"Assessment {updated_assessment.name} was checked out by {user_name}. \n" \
+              f"Edits may not be made by any other collaborator while the assessment is checked out."
+    if original_assessment.checkout is not None and updated_assessment.checkout is None:
+        subject = f"assessment {updated_assessment.name} checked in by {user_name}"
+        message = f"Assessment {updated_assessment.name} was checked in by {user_name}. \n" \
+                  f"Edits may now be made by other collaborators."
+
+    notify_assessment_admins(
+        subject=subject, message=message, assessment=updated_assessment
+    )
 
 
 def enforce_required_attributes(assessment):
