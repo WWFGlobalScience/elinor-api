@@ -51,12 +51,13 @@ from ..permissions import (
 )
 from ..utils import truthy, unzip_file
 from ..utils.assessment import (
-    assessment_xlsx_has_errors,
-    enforce_required_attributes,
-    log_assessment_change,
     assessment_score,
+    assessment_xlsx_has_errors,
     attribute_scores,
+    enforce_required_attributes,
     get_assessment_related_queryset,
+    log_assessment_change,
+    notify_assessment_checkout,
 )
 
 
@@ -175,6 +176,7 @@ class AssessmentViewSet(BaseAPIViewSet):
         edited_assessment = serializer.save()
         enforce_required_attributes(edited_assessment)
         log_assessment_change(original_assessment, edited_assessment, user)
+        notify_assessment_checkout(original_assessment, edited_assessment, user)
 
     @action(detail=True, methods=["GET", "POST"])
     def xlsx(self, request, pk, *args, **kwargs):
