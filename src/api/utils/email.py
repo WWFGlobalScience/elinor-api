@@ -70,6 +70,24 @@ def email_assessment_admins(**kwargs):
     )
 
 
+def notify_assessment_admins(**kwargs):
+    template = "emails/notify_assessment_admins.html"
+    assessment = kwargs["assessment"]
+    context = {
+        "message": kwargs["message"],
+        "assessment": assessment,
+    }
+    admins = Collaborator.objects.filter(assessment=assessment, role=Collaborator.ADMIN)
+    admin_emails = [admin.user.email for admin in admins]
+
+    elinor_email(
+        kwargs["subject"],
+        template,
+        admin_emails,
+        context=context,
+    )
+
+
 def email_elinor_admins_flag(assessmentflag, admin_link):
     template = "emails/flag_elinor_admins.html"
     subject = f"Elinor assessment flagged: {assessmentflag}"

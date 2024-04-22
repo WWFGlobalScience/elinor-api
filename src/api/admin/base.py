@@ -188,8 +188,8 @@ class CountryListFilter(admin.SimpleListFilter):
         _field = getattr(queryset.model, self.parameter_name).field
         if self.value():
             if _field.multiple:
-                return queryset.filter(country__icontains=self.value())
-            return queryset.filter(country__iname=self.value())
+                return queryset.filter(countries__icontains=self.value())
+            return queryset.filter(country=self.value())
         else:
             return queryset
 
