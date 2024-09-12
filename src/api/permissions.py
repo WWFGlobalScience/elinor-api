@@ -2,6 +2,7 @@ from django.core.exceptions import ObjectDoesNotExist
 from rest_framework import permissions, serializers
 from rest_framework.exceptions import PermissionDenied
 from .models.assessment import Assessment, Collaborator
+from .utils import get_m2m_fields
 
 
 def get_assessment_or_none(obj):
@@ -90,9 +91,13 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
             return True
 
         if request.method == "POST" and view.basename != "assessment":
-            serializer = view.get_serializer(data=request.data)
-            serializer.is_valid(raise_exception=True)
             model_class = view.get_queryset().model
+            m2m_fields = get_m2m_fields(model_class)
+            # Strip out m2m fields that are likely used in PrimaryKeyExpandedField
+            # GET representations inappropriate for model instantiation
+            non_m2m_data = {k: v for k, v in request.data.items() if k not in m2m_fields}
+            serializer = view.get_serializer(data=non_m2m_data)
+            serializer.is_valid(raise_exception=True)
             obj = model_class(**serializer.validated_data)
             # check perms for the assessment related to proposed new obj
             return self.user_assessment_permissions(request, serializer, obj, user)
