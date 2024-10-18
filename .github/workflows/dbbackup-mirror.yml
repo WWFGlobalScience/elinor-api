@@ -1,0 +1,21 @@
+name: Mirror database backups to non-AWS (MS Azure) location
+on:
+  schedule:
+    - cron: "0 0 * * *"  # Runs daily
+  workflow_dispatch:
+jobs:
+  rclone:
+    runs-on: ubuntu-latest
+    steps:
+      - name: rclone copy
+        uses: data-mermaid/backup/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: copy --verbose dbbackups-s3:elinor-db-backups dbbackups-azure:backup
+      - name: rclone delete
+        uses: data-mermaid/backup/rclone@v1
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: delete --verbose --min-age 61d dbbackups-azure:backup
