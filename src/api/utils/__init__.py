@@ -1,5 +1,6 @@
 import re
 import subprocess
+from django.db.models.fields.related import ManyToManyField
 from django.utils.html import strip_tags
 from typing import Optional
 from zipfile import ZipFile
@@ -55,3 +56,7 @@ def unzip_file(file, temppath):
     dirs = [f for f in temppath.iterdir() if temppath.joinpath(f).is_dir()]
     files = [f for f in temppath.iterdir() if temppath.joinpath(f).is_file()]
     return dirs, files
+
+
+def get_m2m_fields(model):
+    return [field.name for field in model._meta.get_fields() if isinstance(field, ManyToManyField)]
