@@ -1,4 +1,4 @@
-FROM python:3.10-slim-bullseye
+FROM python:3.11-slim-bullseye
 LABEL maintenance="admin@elinordata.org"
 
 ENV DEBIAN_FRONTEND noninteractive

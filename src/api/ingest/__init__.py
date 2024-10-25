@@ -1,7 +1,3 @@
-from rest_framework import status
-from rest_framework.response import Response
-
-
 ERROR = "error"
 WARNING = "warning"
 

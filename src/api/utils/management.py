@@ -6,7 +6,7 @@ from django.contrib.gis.gdal.geometries import MultiPolygon, OGRGeomType
 from django.contrib.gis.geos import LinearRing, Polygon as GEOSPolygon
 from django.core.exceptions import ValidationError
 from django.template.defaultfilters import filesizeformat
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from pathlib import Path
 from tempfile import TemporaryDirectory
 

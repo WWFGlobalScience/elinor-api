@@ -1,7 +1,7 @@
 import datetime
 from django.contrib.gis.db import models
 from django.contrib.postgres.fields import ArrayField
-from django.utils.translation import ugettext_lazy as _
+from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
 from .base import (
     BaseModel,
