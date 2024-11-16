@@ -1,7 +1,11 @@
 from django.conf import settings
 from django.contrib.gis.db import models
+from django.core.exceptions import ValidationError, NON_FIELD_ERRORS
+from django.db import connection
 from django.utils.translation import gettext_lazy as _
 from django_countries.fields import CountryField
+
+# from modeltranslation.utils import get_translation_fields
 
 
 def latest_version():
@@ -28,6 +32,64 @@ class BaseModel(models.Model):
         blank=True,
         related_name="%(class)s_updated_by",
     )
+
+    def validate_unique(self, exclude=None):
+        # do normal uniqueness checks, using current language to check translated fields
+        super().validate_unique(exclude)
+
+        # repeat, using original non-translated fields
+        errors = {}
+        unique_checks, date_checks = self._get_unique_checks(exclude=exclude)
+        for model_class, unique_check in unique_checks:
+            # Query against everything, not filtered by translated field val
+            qs = model_class._default_manager.all()
+            model_class_pk = self._get_pk_val(model_class._meta)
+            if not self._state.adding and model_class_pk is not None:
+                qs = qs.exclude(pk=model_class_pk)
+
+            lookup_kwargs = {}
+            for field_name in unique_check:
+                f = self._meta.get_field(field_name)
+                lookup_value = getattr(self, f.attname)
+                # TODO: Handle multiple backends with different feature flags.
+                if lookup_value is None or (
+                    lookup_value == ""
+                    and connection.features.interprets_empty_strings_as_nulls
+                ):
+                    # no value, skip the lookup
+                    continue
+                if f.primary_key and not self._state.adding:
+                    # no need to check for unique primary key when editing
+                    continue
+                lookup_kwargs[str(field_name)] = lookup_value
+
+                # some fields were skipped, no reason to do the check
+                if len(unique_check) != len(lookup_kwargs):
+                    continue
+
+            if lookup_kwargs:
+                for obj in qs:
+                    obj_dict = {
+                        k: v for k, v in obj.__dict__.items() if not k.startswith("_")
+                    }
+                    # check against original field
+                    # TODO: check against all translated fields other than for the currently selected language?
+                    # translated_field_names = get_translation_fields(field_name)
+                    if all(
+                        obj_dict.get(key) == value
+                        for key, value in lookup_kwargs.items()
+                    ):
+                        if len(unique_check) == 1:
+                            key = unique_check[0]
+                        else:
+                            key = NON_FIELD_ERRORS
+                        errors.setdefault(key, []).append(
+                            self.unique_error_message(model_class, unique_check)
+                        )
+                        continue
+
+        if errors:
+            raise ValidationError(errors)
 
     class Meta:
         abstract = True
