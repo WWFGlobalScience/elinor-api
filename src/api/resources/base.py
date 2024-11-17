@@ -44,7 +44,7 @@ from ..permissions import (
     ReadOnly,
     ReadOnlyOrAuthenticatedCreate,
 )
-from ..utils import truthy
+from ..utils import get_m2m_fields, truthy
 
 try:
     from allauth.account.utils import send_email_confirmation, setup_user_email
@@ -133,7 +133,9 @@ class BaseAPISerializer(serializers.ModelSerializer):
     #                 self.fields.pop(field.name)
 
     def validate(self, data):
-        instance = self.instance or self.Meta.model(**data)
+        m2m_fields = get_m2m_fields(self.Meta.model)
+        non_m2m_data = {k: v for k, v in data.items() if k not in m2m_fields}
+        instance = self.instance or self.Meta.model(**non_m2m_data)
         try:
             instance.full_clean()
         except DjangoValidationError as e:

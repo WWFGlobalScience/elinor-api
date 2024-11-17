@@ -63,9 +63,9 @@ class BaseModel(models.Model):
                     continue
                 lookup_kwargs[str(field_name)] = lookup_value
 
-                # some fields were skipped, no reason to do the check
-                if len(unique_check) != len(lookup_kwargs):
-                    continue
+            # some fields were skipped, no reason to do the check
+            if len(unique_check) != len(lookup_kwargs):
+                continue
 
             if lookup_kwargs:
                 for obj in qs:
