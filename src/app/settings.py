@@ -153,6 +153,9 @@ LANGUAGES = (
     ("pt", gettext("Portuguese")),
     ("sw", gettext("Kiswahili")),
 )
+MODELTRANSLATION_FALLBACK_LANGUAGES = {
+    "default": ("en", "es", "id", "pt", "sw"),
+}
 
 
 # App settings
@@ -180,6 +183,7 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.BrowsableAPIRenderer",  #
     ),
     "EXCEPTION_HANDLER": "api.resources.api_exception_handler",
+    "NON_FIELD_ERRORS_KEY": "non_field_errors",
 }
 
 CORS_ORIGIN_ALLOW_ALL = True

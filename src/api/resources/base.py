@@ -1,6 +1,7 @@
 from collections import OrderedDict
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -122,13 +123,28 @@ class BaseAPISerializer(serializers.ModelSerializer):
     updated_on = serializers.DateTimeField(read_only=True)
     updated_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
-            modelfields = self.Meta.model._meta.fields
-            for field in modelfields:
-                if isinstance(field, TranslationField):
-                    self.fields.pop(field.name)
+    # Uncomment to not include translated fields
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
+    #         modelfields = self.Meta.model._meta.fields
+    #         for field in modelfields:
+    #             if isinstance(field, TranslationField):
+    #                 self.fields.pop(field.name)
+
+    def validate(self, data):
+        instance = self.instance or self.Meta.model(**data)
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            # Reformat Django's validation errors to DRF's ValidationError format
+            errors = e.message_dict
+            if "__all__" in errors:
+                _non_field_errors = settings.REST_FRAMEWORK.get("NON_FIELD_ERRORS_KEY", "__all__")
+                errors[_non_field_errors] = errors.pop("__all__")
+            raise serializers.ValidationError(errors)
+
+        return super().validate(data)
 
     def create(self, validated_data):
         request = self.context.get("request")
