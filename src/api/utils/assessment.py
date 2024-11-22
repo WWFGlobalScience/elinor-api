@@ -153,10 +153,12 @@ def enforce_required_attributes(assessment):
 
 
 def get_assessment_related_queryset(user, model):
+    qs = model.objects.all()
+    if user.is_authenticated and user.is_superuser:
+        return qs
     lookup = model.assessment_lookup
     if lookup != "":
         lookup = f"{lookup}__"
-    qs = model.objects.all()
     qry = Q(**{f"{lookup}status__lte": Assessment.FINALIZED}) & Q(
         **{f"{lookup}data_policy__gte": Assessment.PUBLIC}
     )
