@@ -153,7 +153,7 @@ class AssessmentFilterSet(BaseAPIFilterSet):
 class AssessmentViewSet(BaseAPIViewSet):
     ordering = ["name", "year"]
     serializer_class = AssessmentSerializer
-    filter_class = AssessmentFilterSet
+    filterset_class = AssessmentFilterSet
     search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
@@ -283,7 +283,7 @@ class AssessmentChangeFilterSet(BaseAPIFilterSet):
 class AssessmentChangeViewSet(BaseAPIViewSet):
     ordering = ["assessment", "event_on", "event_type"]
     serializer_class = AssessmentChangeSerializer
-    filter_class = AssessmentChangeFilterSet
+    filterset_class = AssessmentChangeFilterSet
     search_fields = ["assessment_name", "user__username"]
     permission_classes = [ReadOnly]
 
@@ -305,7 +305,7 @@ class AssessmentFlagFilterSet(BaseAPIFilterSet):
 
 class AssessmentFlagViewSet(BaseAPIViewSet):
     serializer_class = AssessmentFlagSerializer
-    filter_class = AssessmentFlagFilterSet
+    filterset_class = AssessmentFlagFilterSet
     search_fields = ["assessment_name", "reporter__username"]
     permission_classes = [ReadOnlyOrAuthenticatedCreate]
 
@@ -340,7 +340,7 @@ class CollaboratorFilterSet(BaseAPIFilterSet):
 class CollaboratorViewSet(BaseAPIViewSet):
     ordering = ["assessment", "user"]
     serializer_class = CollaboratorSerializer
-    filter_class = CollaboratorFilterSet
+    filterset_class = CollaboratorFilterSet
     search_fields = ["assessment__name", "user__username"]
     permission_classes = [CollaboratorReadOnlyOrAuthenticatedUserPermission]
 
