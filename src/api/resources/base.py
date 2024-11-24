@@ -189,7 +189,7 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
 
 class BaseChoiceViewSet(BaseAPIViewSet):
     ordering = ["name"]
-    filter_class = ChoiceFilterSet
+    filterset_class = ChoiceFilterSet
     search_fields = ["name"]
     permission_classes = [
         ReadOnlyOrAuthenticatedCreate,
@@ -331,7 +331,7 @@ class UserViewSet(BaseAPIViewSet):
     ]
     ordering = ["username"]
     serializer_class = UserSerializer
-    filter_class = UserFilterSet
+    filterset_class = UserFilterSet
     search_fields = ["username", "first_name", "last_name"]
 
     def get_queryset(self):
@@ -377,7 +377,7 @@ class AttributeFilterSet(BaseAPIFilterSet):
 
 class AttributeViewSet(BaseChoiceViewSet):
     serializer_class = AttributeSerializer
-    filter_class = AttributeFilterSet
+    filterset_class = AttributeFilterSet
     permission_classes = [ReadOnly]
     ordering = ["order", "name"]
 
@@ -403,7 +403,7 @@ class DocumentFilterSet(BaseAPIFilterSet):
 
 class DocumentViewSet(BaseAPIViewSet):
     serializer_class = DocumentSerializer
-    filter_class = DocumentFilterSet
+    filterset_class = DocumentFilterSet
     permission_classes = [ReadOnly]
 
     def get_queryset(self):
@@ -457,7 +457,7 @@ class ProtectedAreaSerializer(BaseAPISerializer):
 
 class ProtectedAreaViewSet(BaseChoiceViewSet):
     serializer_class = ProtectedAreaSerializer
-    filter_class = ChoiceFilterSet
+    filterset_class = ChoiceFilterSet
 
     def get_queryset(self):
         return ProtectedArea.objects.all()
@@ -479,7 +479,7 @@ class RegionFilterSet(ChoiceFilterSet):
 
 class RegionViewSet(BaseChoiceViewSet):
     serializer_class = RegionSerializer
-    filter_class = RegionFilterSet
+    filterset_class = RegionFilterSet
 
     def get_queryset(self):
         return Region.objects.all()

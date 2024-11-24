@@ -179,7 +179,7 @@ class AssessmentReportView(ReportView):
     csv_method_fields = ["attributes"]
     file_prefix = "assessmentreport"
     _question_likerts = None
-    filter_class = AssessmentReportFilterSet
+    filterset_class = AssessmentReportFilterSet
     search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 

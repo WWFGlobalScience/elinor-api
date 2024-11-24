@@ -24,7 +24,7 @@ class SurveyQuestionLikertFilterSet(BaseAPIFilterSet):
 
 class SurveyQuestionLikertViewSet(BaseAPIViewSet):
     serializer_class = SurveyQuestionLikertSerializer
-    filter_class = SurveyQuestionLikertFilterSet
+    filterset_class = SurveyQuestionLikertFilterSet
     permission_classes = [ReadOnly]
 
     def get_queryset(self):
@@ -55,7 +55,7 @@ class SurveyAnswerLikertFilterSet(BaseAPIFilterSet):
 class SurveyAnswerLikertViewSet(BaseAPIViewSet):
     ordering = ["assessment", "question"]
     serializer_class = SurveyAnswerLikertSerializer
-    filter_class = SurveyAnswerLikertFilterSet
+    filterset_class = SurveyAnswerLikertFilterSet
     search_fields = ["assessment__name", "question__key", "question__attribute__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 

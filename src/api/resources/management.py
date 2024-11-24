@@ -106,7 +106,7 @@ class ManagementAreaFilterSet(BaseAPIFilterSet):
 class ManagementAreaViewSet(BaseAPIViewSet):
     ordering = ["name", "version_date"]
     serializer_class = ManagementAreaSerializer
-    filter_class = ManagementAreaFilterSet
+    filterset_class = ManagementAreaFilterSet
     search_fields = ["name", "protected_area__name", "management_authority__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
@@ -146,7 +146,7 @@ class ManagementAreaZoneFilterSet(BaseAPIFilterSet):
 class ManagementAreaZoneViewSet(BaseAPIViewSet):
     ordering = ["name", "management_area__name"]
     serializer_class = ManagementAreaZoneSerializer
-    filter_class = ManagementAreaZoneFilterSet
+    filterset_class = ManagementAreaZoneFilterSet
     search_fields = ["name", "management_area__name"]
     permission_classes = [AssessmentReadOnlyOrAuthenticatedUserPermission]
 
