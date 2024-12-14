@@ -36,7 +36,7 @@ if ENVIRONMENT not in ("prod", "dev"):
     DEBUG_LEVEL = "DEBUG"
     ALLOWED_HOSTS = ["*"]
     EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-    API_DOMAIN = "http://localhost:8081"
+    API_DOMAIN = "http://localhost:8082"
     FRONTEND_DOMAIN = "http://localhost:3000"
 
 
@@ -76,11 +76,11 @@ MIDDLEWARE = [
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
-    "corsheaders.middleware.CorsPostCsrfMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "django.middleware.locale.LocaleMiddleware",
+    "allauth.account.middleware.AccountMiddleware",
 ]
 
 ROOT_URLCONF = "app.urls"
@@ -153,6 +153,9 @@ LANGUAGES = (
     ("pt", gettext("Portuguese")),
     ("sw", gettext("Kiswahili")),
 )
+MODELTRANSLATION_FALLBACK_LANGUAGES = {
+    "default": ("en", "es", "id", "pt", "sw"),
+}
 
 
 # App settings
@@ -180,10 +183,10 @@ REST_FRAMEWORK = {
         "rest_framework.renderers.BrowsableAPIRenderer",  #
     ),
     "EXCEPTION_HANDLER": "api.resources.api_exception_handler",
+    "NON_FIELD_ERRORS_KEY": "non_field_errors",
 }
 
 CORS_ORIGIN_ALLOW_ALL = True
-CORS_REPLACE_HTTPS_REFERER = True
 
 AWS_BACKUP_BUCKET = os.environ.get("AWS_BACKUP_BUCKET")
 AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
@@ -233,11 +236,9 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_AUTHENTICATION_METHOD = "username_email"
 
-REST_AUTH_SERIALIZERS = {
+REST_AUTH = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
     "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
-}
-REST_AUTH_REGISTER_SERIALIZERS = {
     "REGISTER_SERIALIZER": "api.resources.authuser.UserRegistrationSerializer",
 }
 

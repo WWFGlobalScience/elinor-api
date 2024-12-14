@@ -1,6 +1,7 @@
 from collections import OrderedDict
+from django.conf import settings
 from django.contrib.auth import get_user_model
-from django.core.exceptions import ObjectDoesNotExist
+from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -43,7 +44,7 @@ from ..permissions import (
     ReadOnly,
     ReadOnlyOrAuthenticatedCreate,
 )
-from ..utils import truthy
+from ..utils import get_m2m_fields, truthy
 
 try:
     from allauth.account.utils import send_email_confirmation, setup_user_email
@@ -122,13 +123,30 @@ class BaseAPISerializer(serializers.ModelSerializer):
     updated_on = serializers.DateTimeField(read_only=True)
     updated_by = serializers.PrimaryKeyRelatedField(read_only=True)
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
-            modelfields = self.Meta.model._meta.fields
-            for field in modelfields:
-                if isinstance(field, TranslationField):
-                    self.fields.pop(field.name)
+    # Uncomment to not include translated fields
+    # def __init__(self, *args, **kwargs):
+    #     super().__init__(*args, **kwargs)
+    #     if hasattr(self, "Meta") and hasattr(self.Meta, "model"):
+    #         modelfields = self.Meta.model._meta.fields
+    #         for field in modelfields:
+    #             if isinstance(field, TranslationField):
+    #                 self.fields.pop(field.name)
+
+    def validate(self, data):
+        m2m_fields = get_m2m_fields(self.Meta.model)
+        non_m2m_data = {k: v for k, v in data.items() if k not in m2m_fields}
+        instance = self.instance or self.Meta.model(**non_m2m_data)
+        try:
+            instance.full_clean()
+        except DjangoValidationError as e:
+            # Reformat Django's validation errors to DRF's ValidationError format
+            errors = e.message_dict
+            if "__all__" in errors:
+                _non_field_errors = settings.REST_FRAMEWORK.get("NON_FIELD_ERRORS_KEY", "__all__")
+                errors[_non_field_errors] = errors.pop("__all__")
+            raise serializers.ValidationError(errors)
+
+        return super().validate(data)
 
     def create(self, validated_data):
         request = self.context.get("request")
@@ -171,7 +189,7 @@ class BaseAPIViewSet(viewsets.ModelViewSet):
 
 class BaseChoiceViewSet(BaseAPIViewSet):
     ordering = ["name"]
-    filter_class = ChoiceFilterSet
+    filterset_class = ChoiceFilterSet
     search_fields = ["name"]
     permission_classes = [
         ReadOnlyOrAuthenticatedCreate,
@@ -313,7 +331,7 @@ class UserViewSet(BaseAPIViewSet):
     ]
     ordering = ["username"]
     serializer_class = UserSerializer
-    filter_class = UserFilterSet
+    filterset_class = UserFilterSet
     search_fields = ["username", "first_name", "last_name"]
 
     def get_queryset(self):
@@ -359,7 +377,7 @@ class AttributeFilterSet(BaseAPIFilterSet):
 
 class AttributeViewSet(BaseChoiceViewSet):
     serializer_class = AttributeSerializer
-    filter_class = AttributeFilterSet
+    filterset_class = AttributeFilterSet
     permission_classes = [ReadOnly]
     ordering = ["order", "name"]
 
@@ -385,7 +403,7 @@ class DocumentFilterSet(BaseAPIFilterSet):
 
 class DocumentViewSet(BaseAPIViewSet):
     serializer_class = DocumentSerializer
-    filter_class = DocumentFilterSet
+    filterset_class = DocumentFilterSet
     permission_classes = [ReadOnly]
 
     def get_queryset(self):
@@ -439,7 +457,7 @@ class ProtectedAreaSerializer(BaseAPISerializer):
 
 class ProtectedAreaViewSet(BaseChoiceViewSet):
     serializer_class = ProtectedAreaSerializer
-    filter_class = ChoiceFilterSet
+    filterset_class = ChoiceFilterSet
 
     def get_queryset(self):
         return ProtectedArea.objects.all()
@@ -461,7 +479,7 @@ class RegionFilterSet(ChoiceFilterSet):
 
 class RegionViewSet(BaseChoiceViewSet):
     serializer_class = RegionSerializer
-    filter_class = RegionFilterSet
+    filterset_class = RegionFilterSet
 
     def get_queryset(self):
         return Region.objects.all()
