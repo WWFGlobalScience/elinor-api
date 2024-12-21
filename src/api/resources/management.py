@@ -36,8 +36,8 @@ from ..permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
 class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
-    point = PointFieldValidated()
-    polygon = MultiPolygonFieldValidated()
+    point = PointFieldValidated(required=False)
+    polygon = MultiPolygonFieldValidated(required=False)
     stakeholder_groups = PrimaryKeyExpandedField(
         queryset=StakeholderGroup.objects.all(),
         many=True,
