@@ -74,16 +74,16 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
                 if not assessment.is_finalized:
                     return True
                 elif serializer:
-                    return set(serializer.validated_data.keys()).issubset(
-                        self.PUBLISHED_MODIFIABLE_FIELDS
+                    return (
+                        set(serializer.validated_data.keys()).issubset(
+                            self.PUBLISHED_MODIFIABLE_FIELDS
+                        )
+                        and request.method != "DELETE"
                     )
             elif user_collaborator.is_collector:
-                return not assessment.is_finalized and request.method in (
-                    "PUT",
-                    "PATCH",
-                )
+                return not assessment.is_finalized and request.method != "DELETE"
 
-        return True
+        return False
 
     def has_permission(self, request, view):
         user = request.user
@@ -95,7 +95,9 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
             m2m_fields = get_m2m_fields(model_class)
             # Strip out m2m fields that are likely used in PrimaryKeyExpandedField
             # GET representations inappropriate for model instantiation
-            non_m2m_data = {k: v for k, v in request.data.items() if k not in m2m_fields}
+            non_m2m_data = {
+                k: v for k, v in request.data.items() if k not in m2m_fields
+            }
             serializer = view.get_serializer(data=non_m2m_data)
             serializer.is_valid(raise_exception=True)
             obj = model_class(**serializer.validated_data)
