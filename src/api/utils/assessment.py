@@ -21,8 +21,9 @@ def questionlikerts():
 
 
 def attribute_scores(assessment):
+    assessment_attributes = assessment.attributes.all()
     answers = (
-        SurveyAnswerLikert.objects.filter(assessment=assessment)
+        SurveyAnswerLikert.objects.filter(assessment=assessment, question__attribute__in=assessment_attributes)
         .select_related("question", "question__attribute")
         .order_by(
             "question__attribute__order",

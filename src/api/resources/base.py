@@ -25,6 +25,8 @@ from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
+from rest_framework.serializers import ValidationError
+from rest_framework_gis.fields import GeometryField
 from ..models import (
     ActiveLanguage,
     AssessmentVersion,
@@ -115,6 +117,62 @@ class PrimaryKeyExpandedField(serializers.PrimaryKeyRelatedField):
             queryset = queryset[:cutoff]
 
         return OrderedDict([(item.pk, self.display_value(item)) for item in queryset])
+
+
+class MultiPolygonFieldValidated(GeometryField):
+    def to_internal_value(self, value):
+        if not isinstance(value, dict):
+            raise ValidationError("Invalid input: value should be a dictionary.")
+
+        if value.get("type") != "MultiPolygon":
+            raise ValidationError("Invalid type. Expected 'MultiPolygon'.")
+
+        coordinates = value.get("coordinates")
+        if not coordinates or not isinstance(coordinates, list):
+            raise ValidationError("Invalid coordinates. Expected a list of polygons.")
+
+        # Validate the nesting of the coordinates
+        for polygon in coordinates:
+            if not isinstance(polygon, list):
+                raise ValidationError("Invalid polygon structure. Expected a list of rings.")
+            for ring in polygon:
+                if not isinstance(ring, list):
+                    raise ValidationError("Invalid ring structure. Expected a list of points.")
+                for point in ring:
+                    if not isinstance(point, list) or len(point) != 2:
+                        raise ValidationError(f"Invalid point structure: {point}. Expected [x, y].")
+                    x, y = point
+
+                    if not isinstance(x, (float, int)):
+                        raise ValidationError(
+                            f"Invalid 'x' coordinate. Type is not double or integer for '{x}'."
+                        )
+                    if not isinstance(y, (float, int)):
+                        raise ValidationError(
+                            f"Invalid 'y' coordinate. Type is not double or integer for '{y}'."
+                        )
+
+        return super().to_internal_value(value)
+
+
+class PointFieldValidated(GeometryField):
+    def to_internal_value(self, value):
+        coords = value.get("coordinates")
+        if coords is None or len(coords) != 2:
+            raise ValidationError("Invalid coordinates")
+        x = value["coordinates"][0]
+        y = value["coordinates"][1]
+
+        if not isinstance(x, float) and not isinstance(x, int):
+            raise ValidationError(
+                f"Invalid 'x' coordinate. Type is not double or integer for '{x}'"
+            )
+        if not isinstance(y, float) and not isinstance(y, int):
+            raise ValidationError(
+                f"Invalid 'y' coordinate. Type is not double or integer for '{y}'"
+            )
+
+        return super().to_internal_value(value)
 
 
 class BaseAPISerializer(serializers.ModelSerializer):

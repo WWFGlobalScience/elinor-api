@@ -1,4 +1,6 @@
 import itertools
+from django.contrib.gis.geos import GEOSGeometry
+from django.core.exceptions import ValidationError
 from django_countries.fields import Country
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -14,6 +16,8 @@ from .base import (
     BaseAPISerializer,
     BaseAPIFilterSet,
     BaseAPIViewSet,
+    MultiPolygonFieldValidated,
+    PointFieldValidated,
     PrimaryKeyExpandedField,
     ReadOnlyChoiceSerializer,
 )
@@ -32,6 +36,8 @@ from ..permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
 class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
+    point = PointFieldValidated(required=False)
+    polygon = MultiPolygonFieldValidated(required=False)
     stakeholder_groups = PrimaryKeyExpandedField(
         queryset=StakeholderGroup.objects.all(),
         many=True,
@@ -74,6 +80,12 @@ class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
         required=False,
         serializer=ReadOnlyChoiceSerializer,
     )
+
+    def validate_polygon(self, value):
+        if not isinstance(value, GEOSGeometry) or not value.valid:
+            raise ValidationError("Invalid geometry.")
+
+        return value
 
     def save(self, **kwargs):
         if "countries" in self.validated_data:
