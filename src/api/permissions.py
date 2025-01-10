@@ -83,7 +83,7 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
             elif user_collaborator.is_collector:
                 return not assessment.is_finalized and request.method != "DELETE"
 
-        return False
+        return user.is_authenticated
 
     def has_permission(self, request, view):
         user = request.user
