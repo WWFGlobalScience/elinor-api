@@ -36,8 +36,8 @@ from ..permissions import AssessmentReadOnlyOrAuthenticatedUserPermission
 
 
 class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
-    point = PointFieldValidated(required=False)
-    polygon = MultiPolygonFieldValidated(required=False)
+    point = PointFieldValidated(required=False, allow_null=True)
+    polygon = MultiPolygonFieldValidated(required=False, allow_null=True)
     stakeholder_groups = PrimaryKeyExpandedField(
         queryset=StakeholderGroup.objects.all(),
         many=True,
@@ -80,12 +80,6 @@ class ManagementAreaSerializer(CountryFieldMixin, BaseAPISerializer):
         required=False,
         serializer=ReadOnlyChoiceSerializer,
     )
-
-    def validate_polygon(self, value):
-        if not isinstance(value, GEOSGeometry) or not value.valid:
-            raise ValidationError("Invalid geometry.")
-
-        return value
 
     def save(self, **kwargs):
         if "countries" in self.validated_data:
