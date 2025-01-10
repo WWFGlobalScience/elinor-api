@@ -157,7 +157,7 @@ class AssessmentXLSX:
 
         sheetname = self.sheetnames[sheetnum]
         try:
-            sheet = self.workbook.get_sheet_by_name(sheetname)
+            sheet = self.workbook[sheetname]
             setattr(self, sheetprop, sheet)
         except KeyError:
             error = ingest_400(
@@ -233,7 +233,7 @@ class AssessmentXLSX:
     def write_header(self, sheetname, section="columns"):
         _header_row = self.ws_def[sheetname][section]["row"]
         _header = self.ws_def[sheetname][section]["header"]
-        ws = self.workbook.get_sheet_by_name(sheetname)
+        ws = self.workbook[sheetname]
 
         for i, col in enumerate(_header):
             _cell = ws.cell(row=_header_row, column=i + 1, value=col.get("content"))
@@ -252,7 +252,7 @@ class AssessmentXLSX:
                 ws.column_dimensions[col_index].width = _width
 
     def validate_header(self, sheetname):
-        sheet = self.workbook.get_sheet_by_name(sheetname)
+        sheet = self.workbook[sheetname]
         header_row = self.ws_def[sheetname]["columns"]["row"]
         user_header_row = list(
             sheet.iter_rows(min_row=header_row, max_row=header_row, values_only=True)
