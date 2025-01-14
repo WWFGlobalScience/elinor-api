@@ -126,6 +126,14 @@ def get_multipolygon_from_shp(field, shapefiledir):
         )
 
     if (
+        not hasattr(shp, "srs")
+        or not hasattr(shp, "geom_type")
+        or shp.srs is None
+        or shp.geom_type is None
+    ):
+        raise ValidationError({field: f"Shapefile is missing CRS or geometry type"})
+
+    if (
         shp.srs["GEOGCS"] not in ACCEPTED_GEOGCS
         and shp.srs["AUTHORITY", 1] not in ACCEPTED_EPSG
     ):
