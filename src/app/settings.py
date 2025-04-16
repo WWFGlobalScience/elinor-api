@@ -152,9 +152,10 @@ LANGUAGES = (
     ("id", gettext("Bahasa Indonesia")),
     ("pt", gettext("Portuguese")),
     ("sw", gettext("Kiswahili")),
+    ("fr", gettext("French")),
 )
 MODELTRANSLATION_FALLBACK_LANGUAGES = {
-    "default": ("en", "es", "id", "pt", "sw"),
+    "default": ("en", "es", "id", "pt", "sw","fr"),
 }
 
 
