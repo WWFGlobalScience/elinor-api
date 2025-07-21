@@ -35,6 +35,7 @@ class BaseModel(models.Model):
 
     def validate_unique(self, exclude=None):
         # do normal uniqueness checks, using current language to check translated fields
+        print("validate_unique")
         super().validate_unique(exclude)
 
         # repeat, using original non-translated fields

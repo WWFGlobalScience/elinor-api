@@ -67,6 +67,15 @@ class SurveyAnswerLikert(SurveyAnswer):
     )
     explanation = models.TextField(blank=True)
 
+    # def full_clean(self, *args, **kwargs):
+    #     print("Model full_clean called")
+    #     super().full_clean(*args, **kwargs)
+    #
+    # def clean(self, *args, **kwargs):
+    #     print("Model clean called")
+    #     super().clean()
+
+
     class Meta:
         unique_together = ("assessment", "question")
         verbose_name = "Likert survey answer"

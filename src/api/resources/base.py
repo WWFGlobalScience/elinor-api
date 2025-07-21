@@ -1,4 +1,4 @@
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
@@ -21,11 +21,13 @@ from rest_framework.decorators import (
     permission_classes,
 )
 from rest_framework.exceptions import MethodNotAllowed
+from rest_framework.fields import empty
 from rest_framework.filters import OrderingFilter, SearchFilter
 from rest_framework.pagination import PageNumberPagination
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 from rest_framework.serializers import ValidationError
+from rest_framework.validators import UniqueTogetherValidator
 from rest_framework_gis.fields import GeometryField
 from ..models import (
     ActiveLanguage,
@@ -191,6 +193,8 @@ class BaseAPISerializer(serializers.ModelSerializer):
     #                 self.fields.pop(field.name)
 
     def validate(self, data):
+        # print("validate")
+        # check role
         m2m_fields = get_m2m_fields(self.Meta.model)
         non_m2m_data = {k: v for k, v in data.items() if k not in m2m_fields}
         instance = self.instance or self.Meta.model(**non_m2m_data)
@@ -206,11 +210,109 @@ class BaseAPISerializer(serializers.ModelSerializer):
 
         return super().validate(data)
 
+    def get_unique_together_validators(self):
+        print("get_unique_together_validators")
+        """
+        Determine a default set of validators for any unique_together constraints.
+        """
+        # The field names we're passing though here only include fields
+        # which may map onto a model field. Any dotted field name lookups
+        # cannot map to a field, and must be a traversal, so we're not
+        # including those.
+        field_sources = {
+            field.field_name: field.source for field in self._writable_fields
+            if (field.source != '*') and ('.' not in field.source)
+        }
+
+        # Special Case: Add read_only fields with defaults.
+        field_sources.update({
+            field.field_name: field.source for field in self.fields.values()
+            if (field.read_only) and (field.default != empty) and (field.source != '*') and ('.' not in field.source)
+        })
+
+        # Invert so we can find the serializer field names that correspond to
+        # the model field names in the unique_together sets. This also allows
+        # us to check that multiple fields don't map to the same source.
+        source_map = defaultdict(list)
+        for name, source in field_sources.items():
+            source_map[source].append(name)
+
+        # Note that we make sure to check `unique_together` both on the
+        # base model class, but also on any parent classes.
+        validators = []
+        for unique_together, queryset in self.get_unique_together_constraints(self.Meta.model):
+            # Skip if serializer does not map to all unique together sources
+            if not set(source_map).issuperset(unique_together):
+                continue
+
+            for source in unique_together:
+                print(f"unique_together: {unique_together}")
+                assert len(source_map[source]) == 1, (
+                    "Unable to create `UniqueTogetherValidator` for "
+                    "`{model}.{field}` as `{serializer}` has multiple "
+                    "fields ({fields}) that map to this model field. "
+                    "Either remove the extra fields, or override "
+                    "`Meta.validators` with a `UniqueTogetherValidator` "
+                    "using the desired field names."
+                    .format(
+                        model=self.Meta.model.__name__,
+                        serializer=self.__class__.__name__,
+                        field=source,
+                        fields=', '.join(source_map[source]),
+                    )
+                )
+
+            field_names = tuple(source_map[f][0] for f in unique_together)
+            validator = UniqueTogetherValidator(
+                queryset=queryset,
+                fields=field_names
+            )
+            validators.append(validator)
+        return validators
+
+    def run_validators(self, value):
+        """
+        Test the given value against all the validators on the field,
+        and either raise a `ValidationError` or simply return.
+        """
+        from rest_framework.fields import get_error_detail
+        print("run_validators")
+        errors = []
+        for validator in self.validators:
+            try:
+                if getattr(validator, 'requires_context', False):
+                    validator(value, self)
+                else:
+                    validator(value)
+            except ValidationError as exc:
+                # If the validation error contains a mapping of fields to
+                # errors then simply raise it immediately rather than
+                # attempting to accumulate a list of errors.
+                if isinstance(exc.detail, dict):
+                    raise
+                errors.extend(exc.detail)
+            except DjangoValidationError as exc:
+                errors.extend(get_error_detail(exc))
+        if errors:
+            raise ValidationError(errors)
+
     def create(self, validated_data):
+        print("create serializer")
         request = self.context.get("request")
         if request and hasattr(request, "user"):
             validated_data["created_by"] = request.user
             validated_data["updated_by"] = request.user
+
+        from django.db import IntegrityError
+
+        try:
+            return super().create(validated_data)
+        except IntegrityError as e:
+            print(e)
+            print(dir(e))
+            print(e.__dict__)
+            # return Response({"error": "Duplicate entry"}, status=400)
+
         return super().create(validated_data)
 
     def update(self, instance, validated_data):

@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError
+from rest_framework.exceptions import ValidationError as DRFValidationError
 from django.db.models.deletion import ProtectedError
 from rest_framework.views import Response, exception_handler
 from rest_framework import status
@@ -7,6 +8,9 @@ from rest_framework import status
 def api_exception_handler(exc, context):
     # Call REST framework's default exception handler first to get the standard error response.
     response = exception_handler(exc, context)
+    # print(exc)
+    # print(isinstance(exc, DRFValidationError))
+    # print(context)
 
     # catch designated otherwise-500-level exceptions if the error response hasn't already been generated
     if response is None:
