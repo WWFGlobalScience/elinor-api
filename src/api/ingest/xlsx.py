@@ -497,13 +497,14 @@ class AssessmentXLSX:
                 for a in answer_serializers:
                     a.save()
                 successful_save = True
+            except Exception as e:
+                error = ingest_400(
+                    ANSWER_SAVE,
+                    "error saving answers to database: " + str(e)
+                )
+                self.validations.update(error)
             finally:
                 if dryrun is True or successful_save is False:
                     transaction.savepoint_rollback(sid)
-                    if successful_save is False:
-                        error = ingest_400(
-                            ANSWER_SAVE, "error saving answers to database"
-                        )
-                        self.validations.update(error)
                 else:
                     transaction.savepoint_commit(sid)
