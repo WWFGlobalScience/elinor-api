@@ -2,6 +2,7 @@ from collections import OrderedDict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
+from django.db import IntegrityError
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -13,8 +14,7 @@ from django_filters import (
     ModelChoiceFilter,
 )
 from django_filters.rest_framework import DjangoFilterBackend
-from modeltranslation.fields import TranslationField
-from rest_framework import permissions, routers, serializers, viewsets
+from rest_framework import permissions, routers, serializers, status, viewsets
 from rest_framework.decorators import (
     api_view,
     authentication_classes,
@@ -211,7 +211,13 @@ class BaseAPISerializer(serializers.ModelSerializer):
         if request and hasattr(request, "user"):
             validated_data["created_by"] = request.user
             validated_data["updated_by"] = request.user
-        return super().create(validated_data)
+
+        try:
+            return super().create(validated_data)
+        # handle db dups not caught by regular flow, due to model-translation
+        # https://trello.com/c/W86adYvd/41-integrity-error-500
+        except IntegrityError as e:
+            raise serializers.ValidationError({"error": f"Duplicate entry: {str(e)}"})
 
     def update(self, instance, validated_data):
         request = self.context.get("request")
