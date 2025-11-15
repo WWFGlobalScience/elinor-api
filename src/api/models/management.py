@@ -134,6 +134,3 @@ class ManagementAreaZone(BaseModel):
 
     def __str__(self):
         return self.name
-    
-    def test(self):
-        pass
