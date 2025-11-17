@@ -1,5 +1,6 @@
 import os
 import sys
+from django.conf.locale import LANG_INFO
 from pathlib import Path
 
 ENVIRONMENT = os.environ.get("ENV").lower()
@@ -133,6 +134,15 @@ USE_I18N = True
 USE_L10N = True
 USE_TZ = True
 
+# Add missing language info for Malagasy
+LANG_INFO.update({
+    "mg": {
+        "bidi": False,
+        "code": "mg",
+        "name": "Malagasy",
+        "name_local": "Malagasy",
+    }
+})
 gettext = lambda s: s
 LANGUAGES = (
     ("en", gettext("English")),
