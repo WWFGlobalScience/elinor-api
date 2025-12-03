@@ -60,7 +60,28 @@ class NewEmailConfirmation(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        user = get_object_or_404(User, email=request.data["email"])
+        email = request.data.get("email")
+        if not email:
+            return Response(
+                {"message": "Email is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        users = User.objects.filter(email=email)
+
+        if not users.exists():
+            return Response(
+                {"message": "This email does not exist, please create a new account"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if users.count() > 1:
+            return Response(
+                {"message": "Multiple accounts found with this email. Please contact support."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        user = users.first()
         emailAddress = EmailAddress.objects.filter(user=user, verified=True).exists()
 
         if emailAddress:
