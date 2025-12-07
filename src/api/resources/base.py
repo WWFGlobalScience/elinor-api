@@ -49,7 +49,6 @@ from ..permissions import (
 from ..utils import get_m2m_fields, truthy
 
 try:
-    from allauth.account.utils import send_email_confirmation, setup_user_email
     from allauth.account.models import EmailAddress
 except ImportError:
     raise ImportError("allauth needs to be added to INSTALLED_APPS.")
@@ -341,8 +340,14 @@ class SelfSerializer(UserSerializer):
         if resetup_email:
             request = self.context.get("request")
             EmailAddress.objects.filter(user=user).delete()
-            setup_user_email(request, user, [])
-            send_email_confirmation(request, user, False, incoming_email)
+            email_address = EmailAddress.objects.create(
+                user=user,
+                email=incoming_email,
+                primary=True,
+                verified=False
+            )
+            email_address.send_confirmation(request)
+            # Invalidate auth token so user must re-login after email change
             try:
                 request.user.auth_token.delete()
             except (AttributeError, ObjectDoesNotExist):
