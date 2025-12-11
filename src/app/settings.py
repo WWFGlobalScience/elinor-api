@@ -240,6 +240,7 @@ REST_AUTH = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
     "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
     "REGISTER_SERIALIZER": "api.resources.authuser.UserRegistrationSerializer",
+    "LOGIN_SERIALIZER": "api.resources.authuser.IExactLoginSerializer",
 }
 
 AUTHENTICATION_BACKENDS = [
