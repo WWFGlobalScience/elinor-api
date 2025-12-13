@@ -210,12 +210,20 @@ class Assessment(BaseModel):
                 f"May not be published without answers to these questions: {questions_string}"
             )
 
+    def _check_management_area_geometry(self):
+        # Ensure management area has either a point or polygon geometry
+        if self.management_area and self.management_area.point is None and self.management_area.polygon is None:
+            raise ValidationError(
+                "May not be published without a point or polygon geometry for the associated management area"
+            )
+
     def clean(self):
         # Publishing checks
         if self.status == self.FINALIZED:
             self._check_nulls()
             self._check_attributes()
             self._check_questions()
+            self._check_management_area_geometry()
 
     def save(self, *args, **kwargs):
         self.full_clean()
