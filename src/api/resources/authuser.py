@@ -3,7 +3,6 @@ from allauth.account.adapter import get_adapter
 from allauth.account.forms import default_token_generator
 from allauth.account.models import EmailAddress
 from allauth.account.utils import (
-    send_email_confirmation,
     user_pk_to_url_str,
     user_username,
 )
@@ -91,7 +90,12 @@ class NewEmailConfirmation(APIView):
             )
         else:
             try:
-                send_email_confirmation(request, user=user)
+                email_address = EmailAddress.objects.get_or_create(
+                    user=user,
+                    email=user.email,
+                    defaults={'primary': True, 'verified': False}
+                )[0]
+                email_address.send_confirmation(request)
                 return Response(
                     {"message": "Email confirmation sent"},
                     status=status.HTTP_201_CREATED,

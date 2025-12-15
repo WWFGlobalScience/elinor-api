@@ -20,13 +20,13 @@ def local(command):
 @task
 def build(c):
     """Run to build a new image prior to fab up"""
-    local("docker-compose build")
+    local("docker compose build")
 
 
 @task(aliases=["build-nocache"])
 def buildnocache(c):
     """Run to build a new image prior fab up"""
-    local("docker-compose build --no-cache --pull")
+    local("docker compose build --no-cache --pull")
 
 
 @task
@@ -34,13 +34,13 @@ def up(c):
     """Create and start the mermaid-api services
     Note: api_db takes a minute or more to init.
     """
-    local("docker-compose up -d")
+    local("docker compose up -d")
 
 
 @task
 def down(c):
     """Stop and remove the mermaid-api services"""
-    local("docker-compose down")
+    local("docker compose down")
 
 
 @task
