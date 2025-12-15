@@ -8,7 +8,7 @@ from allauth.account.utils import (
 )
 from dj_rest_auth.forms import AllAuthPasswordResetForm
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import PasswordResetSerializer
+from dj_rest_auth.serializers import LoginSerializer, PasswordResetSerializer
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import serializers, status
@@ -20,6 +20,32 @@ from rest_framework.views import APIView
 
 from api.models import Organization
 from api.resources.base import User
+
+
+class IExactLoginSerializer(LoginSerializer):
+    @staticmethod
+    def validate_email_verification_status(user, email=None):
+        """
+        Override to use case-insensitive email matching.
+
+        This is a minimal change from the original dj-rest-auth implementation:
+        - Original: filter(email=user.email, verified=True)
+        - Fixed:    filter(email__iexact=user.email, verified=True)
+
+        Args:
+            user: The authenticated user instance
+            email: The email used for login (unused, kept for signature compatibility)
+
+        Raises:
+            ValidationError: If email is not verified when verification is mandatory
+        """
+        if (
+            app_settings.EMAIL_VERIFICATION == app_settings.EmailVerificationMethod.MANDATORY
+            and not user.emailaddress_set.filter(
+                email__iexact=user.email, verified=True
+            ).exists()
+        ):
+            raise serializers.ValidationError("E-mail is not verified.")
 
 
 class UserRegistrationSerializer(RegisterSerializer):
