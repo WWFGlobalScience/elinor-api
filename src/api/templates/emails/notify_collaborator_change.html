@@ -1,0 +1,17 @@
+{% extends "emails/base.html" %}
+{% block title %}Collaborator change for {{ assessment.name }}{% endblock %}
+{% block body %}
+    <p>
+        {{ message }}
+    </p>
+    <p>
+        Assessment: {{ assessment.name }}<br />
+        Year: {{ assessment.year }}
+    </p>
+    <p>
+        You can view this assessment at <a href="{{ frontend_domain }}/assessments/{{ assessment.id }}">{{ frontend_domain }}/assessments/{{ assessment.id }}</a>.
+    </p>
+    <p>
+        Thank you
+    </p>
+{% endblock %}

@@ -1,12 +1,14 @@
 from django import urls
 from django.conf import settings
 from django.core.files.storage import default_storage
-from django.db.models.signals import post_delete, post_save
+from django.db.models.signals import post_delete, post_save, pre_save
 from django.dispatch import receiver
 from .utils.email import (
     email_elinor_admins_flag,
     email_assessment_admins_flag,
     email_assessment_flagger,
+    notify_collaborator_change,
+    notify_assessment_admins_collaborator_change,
 )
 from .models import (
     Assessment,
@@ -93,3 +95,75 @@ def notify_assessment_flagged(sender, instance, created, **kwargs):
         email_elinor_admins_flag(instance, admin_link)
         email_assessment_admins_flag(instance, admin_emails)
         email_assessment_flagger(instance)
+
+
+@receiver(pre_save, sender=Collaborator)
+def store_old_collaborator_role(sender, instance, **kwargs):
+    """Store the old role before save so we can detect changes in post_save."""
+    if instance.pk:
+        try:
+            old_instance = Collaborator.objects.get(pk=instance.pk)
+            instance._old_role = old_instance.role
+        except Collaborator.DoesNotExist:
+            instance._old_role = None
+    else:
+        instance._old_role = None
+
+
+@receiver(post_save, sender=Collaborator)
+def notify_collaborator_saved(sender, instance, created, **kwargs):
+    assessment = instance.assessment
+    user = instance.user
+    role_name = instance.get_role_display()
+
+    if created:
+        subject = f"Added as collaborator to {assessment.name}"
+        message = f"You have been added as a collaborator ({role_name}) to the assessment {assessment.name}."
+        admin_message = f"A collaborator has been added to your assessment.\n\nThe user {user.get_full_name()} ({user.email}) has been added as a {role_name}."
+    else:
+        # Only notify if the role actually changed
+        old_role = getattr(instance, '_old_role', None)
+        if old_role is None or old_role == instance.role:
+            return  # No change to role, skip notification
+
+        subject = f"Collaborator role updated for {assessment.name}"
+        message = f"Your collaborator role for the assessment {assessment.name} has been updated to {role_name}."
+        admin_message = f"A collaborator role has been updated for your assessment.\n\nThe user {user.get_full_name()} ({user.email}) role has been updated to {role_name}."
+
+    notify_collaborator_change(
+        subject=subject,
+        message=message,
+        assessment=assessment,
+        user=user,
+    )
+
+    notify_assessment_admins_collaborator_change(
+        subject=subject,
+        message=admin_message,
+        assessment=assessment,
+        user=user,
+    )
+
+
+@receiver(post_delete, sender=Collaborator)
+def notify_collaborator_deleted(sender, instance, **kwargs):
+    assessment = instance.assessment
+    user = instance.user
+
+    subject = f"Removed as collaborator from {assessment.name}"
+    message = f"You have been removed as a collaborator from the assessment {assessment.name}."
+    admin_message = f"A collaborator has been removed from your assessment.\n\nThe user {user.get_full_name()} ({user.email}) has been removed."
+
+    notify_collaborator_change(
+        subject=subject,
+        message=message,
+        assessment=assessment,
+        user=user,
+    )
+
+    notify_assessment_admins_collaborator_change(
+        subject=subject,
+        message=admin_message,
+        assessment=assessment,
+        user=user,
+    )
