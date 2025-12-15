@@ -242,6 +242,7 @@ REST_SESSION_LOGIN = False
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_METHODS = {"email", "username"}  # Allows login with either email or username
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*"]  # * means required
+ACCOUNT_UNIQUE_EMAIL = True
 
 REST_AUTH = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
