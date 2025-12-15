@@ -125,3 +125,43 @@ def email_assessment_flagger(assessmentflag):
         [assessmentflag.reporter.email],
         context=context,
     )
+
+
+def notify_collaborator_change(**kwargs):
+    template = "emails/notify_collaborator_change.html"
+    assessment = kwargs["assessment"]
+    user = kwargs["user"]
+    context = {
+        "message": kwargs["message"],
+        "assessment": assessment,
+        "user": user,
+    }
+
+    elinor_email(
+        kwargs["subject"],
+        template,
+        [user.email],
+        context=context,
+    )
+
+
+def notify_assessment_admins_collaborator_change(**kwargs):
+    template = "emails/notify_assessment_admins_collaborator_change.html"
+    assessment = kwargs["assessment"]
+    user = kwargs["user"]
+    context = {
+        "message": kwargs["message"],
+        "assessment": assessment,
+        "user": user,
+    }
+    admins = Collaborator.objects.filter(assessment=assessment, role=Collaborator.ADMIN)
+    # Exclude the affected user to avoid duplicate emails (they get their own notification)
+    admin_emails = [admin.user.email for admin in admins if admin.user != user]
+
+    if admin_emails:
+        elinor_email(
+            kwargs["subject"],
+            template,
+            admin_emails,
+            context=context,
+        )
