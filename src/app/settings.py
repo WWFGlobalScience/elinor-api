@@ -109,7 +109,12 @@ DATABASES = {
     }
 }
 if ENVIRONMENT in ("dev", "prod"):
-    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
+    DATABASES["default"]["OPTIONS"] = {
+        "sslmode": "require",
+        "sslcert": "",  # Disable client certificate
+        "sslkey": "",   # Disable client key
+        "sslrootcert": "",  # Disable server certificate verification
+    }
 
 
 # Password validation
