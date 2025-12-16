@@ -98,6 +98,13 @@ WSGI_APPLICATION = "app.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+# Set PostgreSQL SSL environment variables to prevent certificate file lookups
+# This fixes psycopg3 trying to access /root/.postgresql/postgresql.crt
+if ENVIRONMENT in ("dev", "prod"):
+    os.environ.setdefault("PGSSLCERT", "/tmp/postgresql.crt")
+    os.environ.setdefault("PGSSLKEY", "/tmp/postgresql.key")
+    os.environ.setdefault("PGSSLROOTCERT", "/tmp/root.crt")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
@@ -109,12 +116,7 @@ DATABASES = {
     }
 }
 if ENVIRONMENT in ("dev", "prod"):
-    DATABASES["default"]["OPTIONS"] = {
-        "sslmode": "require",
-        "sslcert": "",  # Disable client certificate
-        "sslkey": "",   # Disable client key
-        "sslrootcert": "",  # Disable server certificate verification
-    }
+    DATABASES["default"]["OPTIONS"] = {"sslmode": "require"}
 
 
 # Password validation
