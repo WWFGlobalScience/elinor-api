@@ -1,0 +1,14 @@
+{% extends "emails/base.txt" %}
+{% block body %}
+Assessment Admin:
+
+{{ message }}
+
+Assessment: {{ assessment.name }}
+Year: {{ assessment.year }}
+User: {{ user.get_full_name }} ({{ user.email }})
+
+You can view this assessment at {{ frontend_domain }}/assessments/{{ assessment.id }}.
+
+Thank you
+{% endblock %}
