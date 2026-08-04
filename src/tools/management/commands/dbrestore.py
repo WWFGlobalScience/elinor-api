@@ -4,7 +4,7 @@ import shlex
 import traceback
 from api.utils import run_subprocess
 from django.conf import settings
-from django.core.management.base import BaseCommand
+from django.core.management.base import BaseCommand, CommandError
 
 
 class Command(BaseCommand):
@@ -135,8 +135,7 @@ class Command(BaseCommand):
             self._psql_restore_db(download_file_name)
             print("Restore Complete")
         except Exception as e:
-            print(traceback.print_exc())
-            print("Restore FAILED!")
+            raise CommandError(f"Restore FAILED! {e}") from e
 
         # if options.get('no_download', False) is False:
         #     os.remove(download_file_name)
@@ -153,10 +152,11 @@ class Command(BaseCommand):
             """SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = $${db_name}$$;""",
             "DROP DATABASE IF EXISTS {db_name};",
             "CREATE DATABASE {db_name} OWNER {db_user};",
-            "ALTER PROCEDURAL LANGUAGE plpgsql OWNER TO {db_user};",
         ]
 
-        cmd = "psql -a -h {db_host} -d postgres -U {db_user}".format(**params)
+        cmd = "psql -a -v ON_ERROR_STOP=1 -h {db_host} -d postgres -U {db_user}".format(
+            **params
+        )
         for q in init_db_commands:
             query = "-c '%s'" % q
             psql_command = "%s %s" % (cmd, query.format(**params))
@@ -182,4 +182,4 @@ class Command(BaseCommand):
 
         command = shlex.split(cmd_str)
 
-        run_subprocess(command, to_file=f"/tmp/webapp/stdout_restore.log")
+        run_subprocess(command, to_file="/tmp/webapp/stdout_restore.log")
