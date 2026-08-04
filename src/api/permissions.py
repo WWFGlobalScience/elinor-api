@@ -74,16 +74,33 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
                 if not assessment.is_finalized:
                     return True
                 elif serializer:
-                    return (
+                    # Assessment is finalized - admins can only modify specific fields, no DELETE
+                    if not (
                         set(serializer.validated_data.keys()).issubset(
                             self.PUBLISHED_MODIFIABLE_FIELDS
                         )
                         and request.method != "DELETE"
-                    )
+                    ):
+                        modifiable_fields = ", ".join(self.PUBLISHED_MODIFIABLE_FIELDS)
+                        raise PermissionDenied(
+                            f"Assessment {assessment} is finalized. Only these fields can be modified: {modifiable_fields}."
+                        )
+                    return True
+                # No serializer - falls through to end (allows admin DELETE on finalized assessments)
             elif user_collaborator.is_collector:
-                return not assessment.is_finalized and request.method != "DELETE"
+                if assessment.is_finalized:
+                    raise PermissionDenied(
+                        f"Assessment {assessment} is finalized. Collectors cannot modify finalized assessments."
+                    )
+                if request.method == "DELETE":
+                    raise PermissionDenied(
+                        "Collectors do not have permission to delete assessment resources."
+                    )
+                return True
 
-        return user.is_authenticated
+        if not user.is_authenticated:
+            raise PermissionDenied("Authentication required to modify this resource.")
+        return True
 
     def has_permission(self, request, view):
         user = request.user
@@ -104,7 +121,9 @@ class AssessmentReadOnlyOrAuthenticatedUserPermission(permissions.BasePermission
             # check perms for the assessment related to proposed new obj
             return self.user_assessment_permissions(request, serializer, obj, user)
 
-        return user.is_authenticated
+        if not user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        return True
 
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -134,8 +153,14 @@ class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermissi
                     {"assessment": "Missing assessment id"}
                 )
             user_collaborator = get_collaborator(assessment, user)
-            return user_collaborator.is_admin
-        return user.is_authenticated
+            if not user_collaborator.is_admin:
+                raise PermissionDenied(
+                    f"Only admins can add collaborators to assessment {assessment}."
+                )
+            return True
+        if not user.is_authenticated:
+            raise PermissionDenied("Authentication required.")
+        return True
 
     def has_object_permission(self, request, view, obj):
         user = request.user
@@ -143,4 +168,8 @@ class CollaboratorReadOnlyOrAuthenticatedUserPermission(permissions.BasePermissi
             return True
 
         user_collaborator = get_collaborator(obj.assessment, user)
-        return user_collaborator.is_admin
+        if not user_collaborator.is_admin:
+            raise PermissionDenied(
+                f"Only admins can modify or delete collaborators for assessment {obj.assessment}."
+            )
+        return True
