@@ -1,5 +1,6 @@
 import re
 import subprocess
+import traceback
 from django.db.models.fields.related import ManyToManyField
 from django.utils.html import strip_tags
 from typing import Optional
@@ -7,28 +8,44 @@ from zipfile import ZipFile
 
 
 def run_subprocess(command, std_input=None, to_file=None):
-    try:
-        proc = subprocess.Popen(
-            command,
-            stdin=subprocess.PIPE,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
-            universal_newlines=True,
-        )
-    except Exception as e:
-        print(command)
-        raise e
+    kwargs = dict(check=True, capture_output=True, encoding="UTF-8", errors="replace")
+    # subprocess.run only redirects stdin when `input` is given, so a child would
+    # otherwise inherit our real stdin instead of seeing immediate EOF.
+    if std_input is not None:
+        kwargs["input"] = std_input
+    else:
+        kwargs["stdin"] = subprocess.DEVNULL
 
-    data, err = proc.communicate(input=std_input)
+    try:
+        proc = subprocess.run(command, **kwargs)
+    except subprocess.CalledProcessError as e:
+        print(e.stderr)
+        if to_file is not None:
+            try:
+                with open(to_file, "w", encoding="UTF-8") as f:
+                    f.write("DATA: \n")
+                    f.write(str(e.stdout))
+                    f.write("ERR: \n")
+                    f.write(str(e.stderr))
+            except OSError:
+                traceback.print_exc()
+        raise
+    except Exception:
+        print(command)
+        raise
+
+    # print things like NOTICEs and WARNINGs
+    if proc.stderr:
+        print(proc.stderr)
 
     if to_file is not None:
-        with open(to_file, "w") as f:
+        with open(to_file, "w", encoding="UTF-8") as f:
             f.write("DATA: \n")
-            f.write(str(data))
+            f.write(str(proc.stdout))
             f.write("ERR: \n")
-            f.write(str(err))
-    else:
-        return data, err
+            f.write(str(proc.stderr))
+
+    return proc.stdout, proc.stderr
 
 
 def slugify(text: str, separator: Optional[str] = "_") -> str:
