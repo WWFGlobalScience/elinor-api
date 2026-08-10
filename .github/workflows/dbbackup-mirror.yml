@@ -30,10 +30,10 @@ jobs:
         run: |
           set -o pipefail
           mkdir -p .github/dbbackup-mirror
-          COPY_STATS=$(grep "Transferred:" "$RUNNER_TEMP/copy-stats.log" | tail -n1 || echo "no stats captured")
-          DELETE_STATS=$(grep "Transferred:" "$RUNNER_TEMP/delete-stats.log" | tail -n1 || echo "no stats captured")
+          COPY_STATS=$(sudo grep "Transferred:" "$RUNNER_TEMP/copy-stats.log" | tail -n1 || echo "no stats captured")
+          DELETE_STATS=$(sudo grep "Transferred:" "$RUNNER_TEMP/delete-stats.log" | tail -n1 || echo "no stats captured")
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) copy: ${COPY_STATS} | delete: ${DELETE_STATS}" >> .github/dbbackup-mirror/log.md
-          rm -f "$RUNNER_TEMP/copy-stats.log" "$RUNNER_TEMP/delete-stats.log"
+          sudo rm -f "$RUNNER_TEMP/copy-stats.log" "$RUNNER_TEMP/delete-stats.log"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .github/dbbackup-mirror/log.md
