@@ -7,9 +7,14 @@ from django.core.management.base import BaseCommand
 from simpleflake import simpleflake
 from datetime import datetime, timezone
 from api.utils import run_subprocess
+from api.utils.email import email_elinor_admins
 
 
-BACKUP_EXTENSION = "sql"
+BACKUP_EXTENSION = "dump"
+
+# "local" backups are a shared, hand-curated dataset devs restore from instead of prod —
+# not a rotating series, so they're exempt from age-based cleanup.
+CLEANUP_EXEMPT_BACKUP_NAME = "local"
 
 
 class Command(BaseCommand):
@@ -68,7 +73,7 @@ class Command(BaseCommand):
             if not isinstance(backup_name, str):
                 print("Incorrect argument type")
                 return None
-            self.backup = backup_name
+            self.backup = backup_name.lower()
 
         if self.backup in ["False", "false"]:
             print("Skipping Backup")
@@ -80,17 +85,46 @@ class Command(BaseCommand):
         new_aws_key_name = f"{self.backup}/{new_keyname}"
         new_backup_path = os.path.join(self.local_file_location, f"{self.backup}_{new_keyname}")
 
-        self.pg_dump(new_backup_path)
+        stage = "pg_dump"
+        try:
+            self.pg_dump(new_backup_path)
 
-        if not options.get("no_upload"):
-            print(
-                f"Uploading {new_aws_key_name} to S3 bucket {settings.AWS_BACKUP_BUCKET}"
+            if not options.get("no_upload"):
+                stage = "S3 upload"
+                print(
+                    f"Uploading {new_aws_key_name} to S3 bucket {settings.AWS_BACKUP_BUCKET}"
+                )
+                self.s3.upload_file(
+                    new_backup_path, settings.AWS_BACKUP_BUCKET, new_aws_key_name
+                )
+                print("Upload complete")
+        except Exception as e:
+            self.alert_failure(
+                f"Database backup failed for {self.env}",
+                f"Failed during {stage}: {e}\n\n"
+                "If this was a pg_dump failure, see /tmp/webapp/std_out_backup.log "
+                "on the server for full output.",
             )
-            self.s3.upload_file(
-                new_backup_path, settings.AWS_BACKUP_BUCKET, new_aws_key_name
-            )
-            print("Upload complete")
+            raise
 
+        if self.backup == CLEANUP_EXEMPT_BACKUP_NAME:
+            print(f"Skipping cleanup for '{self.backup}' (exempt from age-based cleanup)")
+        else:
+            # Cleanup is best-effort maintenance; a failure here must not abort the
+            # command, since the backup itself already succeeded above, but it's
+            # still alerted so unbounded backup growth doesn't go unnoticed.
+            try:
+                self._cleanup_stale_backups()
+            except Exception as e:
+                print(f"Cleanup failed (backup itself succeeded): {e}")
+                self.alert_failure(
+                    f"Backup cleanup failed for {self.env} (backup itself succeeded)",
+                    str(e),
+                )
+
+        print("Backup complete")
+
+    def _cleanup_stale_backups(self):
         bucket_file_list = self.get_s3_bucket_obj_list()
         if bucket_file_list:
             for s3_obj in bucket_file_list:
@@ -103,7 +137,16 @@ class Command(BaseCommand):
                         print(f"{s3_obj['Key']} deleted")
             print("Cleanup complete")
 
-        print("Backup complete")
+    def alert_failure(self, subject, message):
+        try:
+            email_elinor_admins(
+                subject=f"[{self.env}] {subject}",
+                message=message,
+                name="Elinor dbbackup",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+            )
+        except Exception:
+            traceback.print_exc()
 
     def pg_dump(self, filename):
         params = {

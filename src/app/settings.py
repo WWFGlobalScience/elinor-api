@@ -98,6 +98,13 @@ WSGI_APPLICATION = "app.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
+# Set PostgreSQL SSL environment variables to prevent certificate file lookups
+# This fixes psycopg3 trying to access /root/.postgresql/postgresql.crt
+if ENVIRONMENT in ("dev", "prod"):
+    os.environ.setdefault("PGSSLCERT", "/tmp/postgresql.crt")
+    os.environ.setdefault("PGSSLKEY", "/tmp/postgresql.key")
+    os.environ.setdefault("PGSSLROOTCERT", "/tmp/root.crt")
+
 DATABASES = {
     "default": {
         "ENGINE": "django.contrib.gis.db.backends.postgis",
@@ -131,7 +138,6 @@ AUTH_PASSWORD_VALIDATORS = [
 LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
-USE_L10N = True
 USE_TZ = True
 
 # Add missing language info for Malagasy
@@ -193,10 +199,18 @@ AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
 AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
 AWS_REGION = AWS_S3_REGION_NAME = os.environ.get("AWS_REGION")
 S3_DBBACKUP_MAXAGE = 60  # days
-DEFAULT_FILE_STORAGE = "storages.backends.s3boto3.S3Boto3Storage"
 AWS_STORAGE_BUCKET_NAME = os.environ.get("AWS_STORAGE_BUCKET_NAME")
 AWS_LOCATION = f"{ENVIRONMENT}/"
 AWS_QUERYSTRING_AUTH = False
+
+STORAGES = {
+    "default": {
+        "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+    },
+    "staticfiles": {
+        "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+    },
+}
 
 EMAIL_HOST = os.environ.get("EMAIL_HOST")
 EMAIL_PORT = os.environ.get("EMAIL_PORT")
@@ -232,14 +246,16 @@ LOGGING = {
 # Authentication
 
 REST_SESSION_LOGIN = False
-ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
-ACCOUNT_AUTHENTICATION_METHOD = "username_email"
+ACCOUNT_LOGIN_METHODS = {"email", "username"}  # Allows login with either email or username
+ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*"]  # * means required
+ACCOUNT_UNIQUE_EMAIL = True
 
 REST_AUTH = {
     "USER_DETAILS_SERIALIZER": "api.resources.base.SelfSerializer",
     "PASSWORD_RESET_SERIALIZER": "api.resources.authuser.FrontendURLPasswordResetSerializer",
     "REGISTER_SERIALIZER": "api.resources.authuser.UserRegistrationSerializer",
+    "LOGIN_SERIALIZER": "api.resources.authuser.IExactLoginSerializer",
 }
 
 AUTHENTICATION_BACKENDS = [

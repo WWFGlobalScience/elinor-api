@@ -376,6 +376,8 @@ class AssessmentXLSX:
         self.protect_sheet(self.ws_survey, ["C", "D"])
 
     def check_file_structure(self, file):
+        # Try to collect all errors for user to deal with at once, via self.validations.update.
+        # But if an error would cause a 500 with further execution, we need to return immediately.
         try:
             self.workbook = load_workbook(file, read_only=True)
         except (InvalidFileException, BadZipFile):
@@ -383,8 +385,12 @@ class AssessmentXLSX:
             # exception message is about a zip file, which would be confusing to users. So we'll return our own.
             error = ingest_400(INVALID_FILE_LOAD, "invalid xlsx file")
             self.validations.update(error)
+            return
 
         titlecrow = self.ws_def[self.sheetnames[0]]["title"]["row"]
+        # Check if ws_survey was successfully loaded (it will be None if the sheet is missing)
+        if self.ws_survey is None:
+            return
         user_assessmment_id = self.ws_survey.cell(row=titlecrow, column=2).value
         if user_assessmment_id != self.assessment.pk:
             error = ingest_400(

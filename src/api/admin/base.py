@@ -4,7 +4,7 @@ from django.conf import settings
 from django.contrib import admin, messages
 from django.contrib.auth.admin import UserAdmin
 from django.contrib.auth import get_user_model
-from django.contrib.gis.admin import OSMGeoAdmin
+from django.contrib.gis.admin import GISModelAdmin
 from django.http import HttpResponse, HttpResponseRedirect
 from django.template.response import TemplateResponse
 from django.urls import path, reverse
@@ -122,7 +122,7 @@ def country_flag(obj):
     return format_html(" ".join([f"<img src='{c.flag}'> {c.name}" for c in _countries]))
 
 
-class BaseAdmin(OSMGeoAdmin):
+class BaseAdmin(GISModelAdmin):
     list_display = ["updated_on"]
     readonly_fields = ["created_on", "updated_on"]
     list_select_related = True

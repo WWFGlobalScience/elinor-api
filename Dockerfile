@@ -1,4 +1,4 @@
-FROM python:3.11-slim-bullseye
+FROM python:3.13-slim-bookworm
 LABEL maintenance="admin@elinordata.org"
 
 ENV DEBIAN_FRONTEND noninteractive
@@ -6,18 +6,25 @@ ENV LANG C.UTF-8
 ENV LANGUAGE C.UTF-8
 ENV LC_ALL C.UTF-8
 
+# Add PostgreSQL APT repository for postgresql-client-16
 RUN apt-get update && apt-get install -y --no-install-recommends \
     gnupg \
+    wget \
+    lsb-release \
+    && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | apt-key add - \
+    && echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update
+
+RUN apt-get install -y --no-install-recommends \
     build-essential \
     libpq-dev \
     python3-dev \
-    wget \
     less \
     nano \
     supervisor \
     nginx \
     gunicorn \
-    postgresql-client-13 \
+    postgresql-client-16 \
     gdal-bin \
     python3-gdal
 

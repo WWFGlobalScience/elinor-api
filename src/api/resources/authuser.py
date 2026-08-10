@@ -3,13 +3,12 @@ from allauth.account.adapter import get_adapter
 from allauth.account.forms import default_token_generator
 from allauth.account.models import EmailAddress
 from allauth.account.utils import (
-    send_email_confirmation,
     user_pk_to_url_str,
     user_username,
 )
 from dj_rest_auth.forms import AllAuthPasswordResetForm
 from dj_rest_auth.registration.serializers import RegisterSerializer
-from dj_rest_auth.serializers import PasswordResetSerializer
+from dj_rest_auth.serializers import LoginSerializer, PasswordResetSerializer
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
 from rest_framework import serializers, status
@@ -21,6 +20,32 @@ from rest_framework.views import APIView
 
 from api.models import Organization
 from api.resources.base import User
+
+
+class IExactLoginSerializer(LoginSerializer):
+    @staticmethod
+    def validate_email_verification_status(user, email=None):
+        """
+        Override to use case-insensitive email matching.
+
+        This is a minimal change from the original dj-rest-auth implementation:
+        - Original: filter(email=user.email, verified=True)
+        - Fixed:    filter(email__iexact=user.email, verified=True)
+
+        Args:
+            user: The authenticated user instance
+            email: The email used for login (unused, kept for signature compatibility)
+
+        Raises:
+            ValidationError: If email is not verified when verification is mandatory
+        """
+        if (
+            app_settings.EMAIL_VERIFICATION == app_settings.EmailVerificationMethod.MANDATORY
+            and not user.emailaddress_set.filter(
+                email__iexact=user.email, verified=True
+            ).exists()
+        ):
+            raise serializers.ValidationError("E-mail is not verified.")
 
 
 class UserRegistrationSerializer(RegisterSerializer):
@@ -60,7 +85,28 @@ class NewEmailConfirmation(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        user = get_object_or_404(User, email=request.data["email"])
+        email = request.data.get("email")
+        if not email:
+            return Response(
+                {"message": "Email is required"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
+        users = User.objects.filter(email=email)
+
+        if not users.exists():
+            return Response(
+                {"message": "This email does not exist, please create a new account"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        if users.count() > 1:
+            return Response(
+                {"message": "Multiple accounts found with this email. Please contact support."},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            )
+
+        user = users.first()
         emailAddress = EmailAddress.objects.filter(user=user, verified=True).exists()
 
         if emailAddress:
@@ -70,7 +116,12 @@ class NewEmailConfirmation(APIView):
             )
         else:
             try:
-                send_email_confirmation(request, user=user)
+                email_address = EmailAddress.objects.get_or_create(
+                    user=user,
+                    email=user.email,
+                    defaults={'primary': True, 'verified': False}
+                )[0]
+                email_address.send_confirmation(request)
                 return Response(
                     {"message": "Email confirmation sent"},
                     status=status.HTTP_201_CREATED,
