@@ -8,7 +8,7 @@
 - [Gunicorn](https://gunicorn.org/) (wsgi)
 - [Nginx](https://www.nginx.com/) (webserver)
 - [Supervisor](http://supervisord.org/) (process control)
-- [Debian](https://www.debian.org/releases/stretch/) (OS)
+- [Debian](https://www.debian.org/releases/bookworm/) (OS)
 - [Docker](https://www.docker.com/) (container)
 
 ## Local Development Workflow
@@ -36,7 +36,6 @@ DB_HOST=elinor_db
 DB_NAME=elinor
 DB_USER=postgres
 DB_PASSWORD=postgres
-DB_HOST=api_db
 DB_PORT=5432
 PGPASSWORD=postgres
 AWS_BACKUP_BUCKET=
@@ -48,7 +47,6 @@ EMAIL_HOST=
 EMAIL_PORT=
 EMAIL_HOST_USER=
 EMAIL_HOST_PASSWORD=
-RESTORE=local
 BACKUP=local
 DJANGO_SECRET_KEY=
 ```
@@ -88,9 +86,14 @@ to create its schema.
 A shortcut for the above steps, once S3 is set up, is available via:
 
 ```
-$ make freshinstall:[env]
+$ make freshinstall
+```
 
-env: local (default), dev, prod
+`make dbrestore`, `make dbbackup` and `make freshinstall` always use the `local` S3 dump. To restore a dump from a
+deployed environment, run the management command directly:
+
+```
+$ docker compose exec elinor_api python manage.py dbrestore dev   # or prod
 ```
 
 ### Running the Webserver
@@ -103,7 +106,7 @@ $ make runserver
 
 ### Further
 
-The project directory `api` is mounted to the container, so any changes you make outside the container (e.g. using an
+The project directory `src` is mounted to the container, so any changes you make outside the container (e.g. using an
 IDE installed on your host OS) are available inside the container.
 
 Please note that running `make up` does NOT rebuild the image. So if you are making changes to the Dockerfile, for
@@ -120,24 +123,43 @@ $ make up
 ### Database commands
 
 ```
-$ make dbbackup:<env>
-
-env: local (default), dev, prod
+$ make dbbackup
 ```
 
-Backup the database from a named S3 key
+Back up the local database to the `local` S3 key. **Careful:** the newest `local` dump is the shared dataset that every
+developer's `make dbrestore` / `make freshinstall` pulls, and `local` dumps are never cleaned up by age. Only back up a
+local database you intend everyone to use.
 
 ```
-$ make dbrestore:<env>
+$ make dbrestore
+```
 
-env: local (default), dev, prod
+Restore the local database from the `local` S3 key.
+
+The Makefile targets don't accept an environment argument. For other environments, call the management commands
+directly, where `<env>` is `local`, `dev` or `prod`. Without an argument, `dbrestore` uses `ENV` and `dbbackup` uses
+`BACKUP`. If `BACKUP` is unset, `dbbackup` prints "Skipping Backup" and exits successfully without backing anything up.
+
+```
+$ docker compose exec elinor_api python manage.py dbbackup <env>
+$ docker compose exec elinor_api python manage.py dbrestore <env>
+```
+
+`dbrestore` also accepts `-f` (force) and `-n` (use the already-downloaded dump instead of fetching from S3).
+
+### Other management commands
+
+There is no `make` target for `makemigrations` or other management commands; run them inside the container:
+
+```
+$ docker compose exec elinor_api python manage.py makemigrations
 ```
 
 ### Translation support
 
 To add a language:
 - determine correct code and spelling ([ISO 639.2](https://www.loc.gov/standards/iso639-2/php/code_list.php) standard suggested)
-- add to settings.LANGUAGES
+- add to settings.LANGUAGES and settings.MODELTRANSLATION_FALLBACK_LANGUAGES
 - makemigrations and migrate
 
 To make a newly added language available from the `/activelanguages/` API endpoint:
@@ -204,7 +226,7 @@ After each deployment, Elastic Beanstalk automatically runs the following comman
 
 1. Create the migration locally:
    ```
-   $ make makemigrations
+   $ docker compose exec elinor_api python manage.py makemigrations
    ```
 2. Commit the migration file to your branch
 3. Create a pull request and merge to `dev` (or push a tag for production)
