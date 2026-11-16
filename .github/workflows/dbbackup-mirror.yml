@@ -18,12 +18,35 @@ jobs:
           RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
         with:
           args: copy --verbose dbbackups-s3:elinor-db-backups dbbackups-azure:backup --log-file=/github/runner_temp/copy-stats.log --stats-one-line
-      - name: rclone delete
+      # Guard against prod backups silently stopping: the age-based delete below would otherwise
+      # empty Azure within ~61 days. The rclone action runs `bash -c "rclone $*"`, so the redirect works.
+      - name: list recent prod backups
+        id: list
+        continue-on-error: true
         uses: data-mermaid/backup/rclone@v2
         env:
           RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
         with:
-          args: delete --verbose --min-age 61d dbbackups-azure:backup --log-file=/github/runner_temp/delete-stats.log --stats-one-line
+          args: lsf --files-only --max-age 2d dbbackups-s3:elinor-db-backups/prod > /github/runner_temp/recent-prod.txt
+      # status: ok | stale (no prod backup in 2d) | listfail (couldn't list S3)
+      - name: check for recent prod backup
+        id: guard
+        run: |
+          if [ "${{ steps.list.outcome }}" != "success" ]; then
+            echo "status=listfail" >> "$GITHUB_OUTPUT"
+          elif sudo test -s "$RUNNER_TEMP/recent-prod.txt"; then
+            echo "status=ok" >> "$GITHUB_OUTPUT"
+          else
+            echo "status=stale" >> "$GITHUB_OUTPUT"
+          fi
+      # local/ is the shared dev dataset; dbbackup exempts it from S3 age-based cleanup, so keep it in Azure too
+      - name: rclone delete
+        if: steps.guard.outputs.status == 'ok'
+        uses: data-mermaid/backup/rclone@v2
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        with:
+          args: delete --verbose --min-age 61d --exclude=local/** dbbackups-azure:backup --log-file=/github/runner_temp/delete-stats.log --stats-one-line
       - name: checkout
         uses: actions/checkout@v4
       - name: record mirror run
@@ -31,11 +54,25 @@ jobs:
           set -o pipefail
           mkdir -p .github/dbbackup-mirror
           COPY_STATS=$(sudo tail -n 5 "$RUNNER_TEMP/copy-stats.log" 2>&1 | tr '\n' ' ')
-          DELETE_STATS=$(sudo tail -n 5 "$RUNNER_TEMP/delete-stats.log" 2>&1 | tr '\n' ' ')
+          case "${{ steps.guard.outputs.status }}" in
+            ok)       DELETE_STATS=$(sudo tail -n 5 "$RUNNER_TEMP/delete-stats.log" 2>&1 | tr '\n' ' ') ;;
+            stale)    DELETE_STATS="SKIPPED: no prod backup newer than 2d in S3" ;;
+            *)        DELETE_STATS="SKIPPED: could not list S3 prod backups" ;;
+          esac
           echo "$(date -u +%Y-%m-%dT%H:%M:%SZ) copy: ${COPY_STATS} | delete: ${DELETE_STATS}" >> .github/dbbackup-mirror/log.md
-          sudo rm -f "$RUNNER_TEMP/copy-stats.log" "$RUNNER_TEMP/delete-stats.log"
+          sudo rm -f "$RUNNER_TEMP/copy-stats.log" "$RUNNER_TEMP/delete-stats.log" "$RUNNER_TEMP/recent-prod.txt"
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
           git add .github/dbbackup-mirror/log.md
           git commit -m "chore: record dbbackup mirror run [skip ci]"
           git push
+      # Runs after the log commit so the keepalive still happens; failing triggers GitHub's failure email
+      - name: fail if prod backups are stale or S3 listing failed
+        if: steps.guard.outputs.status != 'ok'
+        run: |
+          if [ "${{ steps.guard.outputs.status }}" = "stale" ]; then
+            echo "::error::No prod backup newer than 2 days in S3; check prod dbbackup. Azure delete was skipped."
+          else
+            echo "::error::Could not list S3 prod backups (see 'list recent prod backups' step). Azure delete was skipped."
+          fi
+          exit 1
