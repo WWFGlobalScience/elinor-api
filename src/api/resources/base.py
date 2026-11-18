@@ -2,7 +2,7 @@ from collections import OrderedDict
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist, ValidationError as DjangoValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django_countries import countries
 from django_countries.serializers import CountryFieldMixin
 from django_filters import (
@@ -212,7 +212,10 @@ class BaseAPISerializer(serializers.ModelSerializer):
             validated_data["updated_by"] = request.user
 
         try:
-            return super().create(validated_data)
+            # Own savepoint, so an IntegrityError rolls back only this insert and
+            # leaves any enclosing transaction usable.
+            with transaction.atomic():
+                return super().create(validated_data)
         # handle db dups not caught by regular flow, due to model-translation
         # https://trello.com/c/W86adYvd/41-integrity-error-500
         except IntegrityError as e:
@@ -334,24 +337,28 @@ class SelfSerializer(UserSerializer):
         if incoming_email and incoming_email != instance.email:
             resetup_email = True
 
-        user = super().update(instance, validated_data)
-        user = self._create_or_update_profile(user, profile_data)
+        # Atomic so that if the confirmation email can't be sent (EmailSendFailed,
+        # 503), the email change is rolled back rather than leaving the user on an
+        # unverified address with no confirmation link, i.e. locked out.
+        with transaction.atomic():
+            user = super().update(instance, validated_data)
+            user = self._create_or_update_profile(user, profile_data)
 
-        if resetup_email:
-            request = self.context.get("request")
-            EmailAddress.objects.filter(user=user).delete()
-            email_address = EmailAddress.objects.create(
-                user=user,
-                email=incoming_email,
-                primary=True,
-                verified=False
-            )
-            email_address.send_confirmation(request)
-            # Invalidate auth token so user must re-login after email change
-            try:
-                request.user.auth_token.delete()
-            except (AttributeError, ObjectDoesNotExist):
-                pass
+            if resetup_email:
+                request = self.context.get("request")
+                EmailAddress.objects.filter(user=user).delete()
+                email_address = EmailAddress.objects.create(
+                    user=user,
+                    email=incoming_email,
+                    primary=True,
+                    verified=False
+                )
+                email_address.send_confirmation(request)
+                # Invalidate auth token so user must re-login after email change
+                try:
+                    request.user.auth_token.delete()
+                except (AttributeError, ObjectDoesNotExist):
+                    pass
 
         return user
 

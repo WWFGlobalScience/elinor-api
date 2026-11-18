@@ -57,7 +57,7 @@ def slugify(text: str, separator: Optional[str] = "_") -> str:
 
 
 def truthy(val):
-    return val in ("t", "T", "true", "True", "TRUE", True, 1)
+    return val in ("t", "T", "true", "True", "TRUE", "1", True, 1)
 
 
 def strip_html(val):

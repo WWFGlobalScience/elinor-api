@@ -1,12 +1,85 @@
 import datetime
+import logging
+import smtplib
+import time
 from pathlib import Path
 from django.conf import settings
 from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
+from rest_framework import status
+from rest_framework.exceptions import APIException
 from ..models import Collaborator
 
+logger = logging.getLogger(__name__)
 
-def elinor_email(subject, template, to, context=None, from_email=None, reply_to=None):
+# One retry after this delay. Runs inside the request on a sync gunicorn worker
+# (4 workers, 300s timeout), so keep it short; longer back-off belongs in a queue.
+TRANSIENT_RETRY_DELAY = 5  # seconds
+
+
+class EmailSendFailed(APIException):
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = (
+        "We couldn't send the email right now. Please try again in a few minutes."
+    )
+    default_code = "email_send_failed"
+
+
+def _is_transient(e):
+    """
+    True only for temporary (4xx) failures where the server explicitly did not
+    accept the message, so resending can't produce a duplicate. Deliberately
+    excludes a bare SMTPResponseException and SMTPServerDisconnected, either of
+    which can occur after the message was accepted.
+    """
+    if isinstance(e, smtplib.SMTPRecipientsRefused):
+        return bool(e.recipients) and all(
+            400 <= code < 500 for code, _ in e.recipients.values()
+        )
+    if isinstance(
+        e, (smtplib.SMTPDataError, smtplib.SMTPSenderRefused, smtplib.SMTPConnectError)
+    ):
+        return 400 <= e.smtp_code < 500
+    return False
+
+
+def send_with_retry(send, description):
+    """
+    Call `send()`, retrying once after TRANSIENT_RETRY_DELAY if the SMTP server
+    temporarily rejects the message (e.g. Gmail's "451 4.3.0 temporarily rejected").
+    Any remaining SMTP or connection failure is logged and raised as EmailSendFailed.
+    """
+    try:
+        try:
+            send()
+        except smtplib.SMTPException as e:
+            if not _is_transient(e):
+                raise
+            logger.warning(
+                "Transient SMTP error sending %r (%r); retrying once", description, e
+            )
+            time.sleep(TRANSIENT_RETRY_DELAY)
+            send()
+    except (smtplib.SMTPException, OSError) as e:
+        logger.exception("Failed to send email %r", description)
+        raise EmailSendFailed() from e
+
+
+def elinor_email(
+    subject,
+    template,
+    to,
+    context=None,
+    from_email=None,
+    reply_to=None,
+    raise_on_failure=False,
+):
+    """
+    Send an Elinor email. Most callers send notifications as a side effect of a
+    successful write, so by default a send failure is logged and swallowed rather
+    than failing the request; pass raise_on_failure=True when the email is the
+    point of the request.
+    """
     _subject = f"[Elinor] {subject}"
     path = Path(template).parent / Path(template).stem
     template_dir = settings.TEMPLATES[0]["DIRS"][0]
@@ -27,7 +100,11 @@ def elinor_email(subject, template, to, context=None, from_email=None, reply_to=
     if (Path(template_dir) / template_html).is_file():
         html_content = render_to_string(template_html, context=context)
         msg.attach_alternative(html_content, "text/html")
-    msg.send()
+    try:
+        send_with_retry(msg.send, _subject)
+    except EmailSendFailed:
+        if raise_on_failure:
+            raise
 
 
 def email_elinor_admins(**kwargs):
@@ -45,6 +122,7 @@ def email_elinor_admins(**kwargs):
         [settings.EMAIL_CONTACT],
         context=context,
         reply_to=[from_email],
+        raise_on_failure=kwargs.get("raise_on_failure", False),
     )
 
 
@@ -67,6 +145,7 @@ def email_assessment_admins(**kwargs):
         admin_emails,
         context=context,
         reply_to=[from_email],
+        raise_on_failure=kwargs.get("raise_on_failure", False),
     )
 
 

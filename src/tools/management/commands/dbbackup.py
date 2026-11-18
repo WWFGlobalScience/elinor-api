@@ -144,6 +144,7 @@ class Command(BaseCommand):
                 message=message,
                 name="Elinor dbbackup",
                 from_email=settings.DEFAULT_FROM_EMAIL,
+                raise_on_failure=True,
             )
         except Exception:
             traceback.print_exc()

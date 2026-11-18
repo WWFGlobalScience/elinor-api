@@ -181,7 +181,7 @@ class AssessmentViewSet(BaseAPIViewSet):
     @action(detail=True, methods=["GET", "POST"])
     def xlsx(self, request, pk, *args, **kwargs):
         assessment = self.get_object()
-        assessment_xlsx = AssessmentXLSX(assessment)
+        assessment_xlsx = AssessmentXLSX(assessment, request=request)
 
         if request.method == "GET":
             assessment_xlsx.generate_from_assessment()

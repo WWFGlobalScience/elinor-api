@@ -1,14 +1,15 @@
 from copy import copy
-from django.db import transaction
+from django.db import IntegrityError, transaction
 from openpyxl import load_workbook, Workbook
 from openpyxl.styles import Alignment, DEFAULT_FONT, Protection
 from openpyxl.utils import get_column_letter
 from openpyxl.utils.exceptions import InvalidFileException
 from openpyxl.worksheet.datavalidation import DataValidation
 # from openpyxl.worksheet.protection import SheetProtection
+from rest_framework.exceptions import ValidationError
 from zipfile import BadZipFile
 
-from ..models import SurveyQuestionLikert, SurveyAnswerLikert
+from ..models import Assessment, SurveyAnswerLikert
 from ..resources.survey import SurveyAnswerLikertSerializer
 from ..utils import strip_html
 from ..utils.assessment import (
@@ -127,8 +128,9 @@ def get_user_choice(choice_str):
 
 
 class AssessmentXLSX:
-    def __init__(self, assessment):
+    def __init__(self, assessment, request=None):
         self.assessment = assessment
+        self.request = request
         enforce_required_attributes(self.assessment)
         self._questions = []
         self._answers = {}
@@ -459,58 +461,57 @@ class AssessmentXLSX:
         self.answers = user_answers
 
     def submit_answers(self, dryrun):
-        answer_serializers = []
-        answer_serializer_errors = []
-        for key in self.answers.keys():
-            question = SurveyQuestionLikert.objects.get(key=key)
-            answer_dict = {
-                "assessment": self.assessment.pk,
-                "question": question.pk,
-                "choice": self.answers[key]["choice"],
-                "explanation": self.answers[key]["explanation"],
-            }
-            try:
-                answer = SurveyAnswerLikert.objects.get(
-                    assessment=self.assessment, question=question
-                )
-                answer_serializer = SurveyAnswerLikertSerializer(
-                    answer, data=answer_dict
-                )
-            except SurveyAnswerLikert.DoesNotExist:
-                answer_serializer = SurveyAnswerLikertSerializer(data=answer_dict)
-
-            answer_serializer.is_valid()
-            if answer_serializer.errors:
-                print(answer_serializer.errors)
-                answer_serializer_errors.append(answer_serializer.errors)
-            else:
-                answer_serializers.append(answer_serializer)
-
-        if answer_serializer_errors:
-            # TODO: attach cell references to self.answers, and store with validations
-            error = ingest_400(
-                SURVEYANSWERLIKERTSERIALIZER,
-                "invalid answers",
-                {"errors": answer_serializer_errors},
-            )
-            self.validations.update(error)
-            return
-
+        context = {"request": self.request} if self.request else {}
         with transaction.atomic():
-            sid = transaction.savepoint()
-            successful_save = False
+            # Serialize concurrent uploads for this assessment (e.g. a double-
+            # clicked submit). Existing answers are looked up inside the lock, so
+            # a second upload updates rows the first created instead of
+            # colliding on the (assessment, question) unique constraint.
+            Assessment.objects.select_for_update().get(pk=self.assessment.pk)
+
+            answer_serializers = []
+            answer_serializer_errors = []
+            for key, user_answer in self.answers.items():
+                question = self.get_question_by_key(key)
+                answer_dict = {
+                    "assessment": self.assessment.pk,
+                    "question": question.pk,
+                    "choice": user_answer["choice"],
+                    "explanation": user_answer["explanation"],
+                }
+                answer = SurveyAnswerLikert.objects.filter(
+                    assessment=self.assessment, question=question
+                ).first()
+                answer_serializer = SurveyAnswerLikertSerializer(
+                    answer, data=answer_dict, context=context
+                )
+                if answer_serializer.is_valid():
+                    answer_serializers.append(answer_serializer)
+                else:
+                    answer_serializer_errors.append(answer_serializer.errors)
+
+            if answer_serializer_errors:
+                # TODO: attach cell references to self.answers, and store with validations
+                error = ingest_400(
+                    SURVEYANSWERLIKERTSERIALIZER,
+                    "invalid answers",
+                    {"errors": answer_serializer_errors},
+                )
+                self.validations.update(error)
+                return
+
             try:
                 for a in answer_serializers:
                     a.save()
-                successful_save = True
-            except Exception as e:
+            except (ValidationError, IntegrityError) as e:
+                # BaseAPISerializer.create saves inside its own savepoint, so the
+                # transaction is still usable here; roll the whole upload back.
+                transaction.set_rollback(True)
                 error = ingest_400(
-                    ANSWER_SAVE,
-                    "error saving answers to database: " + str(e)
+                    ANSWER_SAVE, "error saving answers to database: " + str(e)
                 )
                 self.validations.update(error)
-            finally:
-                if dryrun is True or successful_save is False:
-                    transaction.savepoint_rollback(sid)
-                else:
-                    transaction.savepoint_commit(sid)
+                return
+
+            if dryrun:
+                transaction.set_rollback(True)
