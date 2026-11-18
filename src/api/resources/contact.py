@@ -47,6 +47,8 @@ def _process_contact_request(serializer, email_function):
         "subject": serializer.validated_data.get("subject"),
         "message": serializer.validated_data.get("message"),
         "assessment": assessment,
+        # the email is the whole point of this request, so surface failures (503)
+        "raise_on_failure": True,
     }
     email_function(**kwargs)
 
