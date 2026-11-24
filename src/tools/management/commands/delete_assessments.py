@@ -77,9 +77,12 @@ class Command(BaseCommand):
     )
 
     def add_arguments(self, parser):
-        source = parser.add_mutually_exclusive_group(required=True)
-        source.add_argument("--ids", help="Comma-separated assessment IDs")
-        source.add_argument(
+        parser.add_argument(
+            "--ids",
+            help="Comma-separated assessment IDs. Can be combined with --csv to add IDs "
+            "that are not in the CSV.",
+        )
+        parser.add_argument(
             "--csv",
             help="CSV of assessments to delete (e.g. an admin export). If it has 'name' and "
             "'created on' columns, each row must match the DB or the command aborts.",
@@ -111,12 +114,15 @@ class Command(BaseCommand):
     # ---------- input ----------
 
     def read_input(self, options):
-        rows = {}
+        if not options["ids"] and not options["csv"]:
+            raise CommandError("Give --csv, --ids, or both")
+        rows, ids = {}, set()
         if options["ids"]:
             try:
                 ids = {int(i) for i in options["ids"].split(",") if i.strip()}
             except ValueError as e:
                 raise CommandError(f"Invalid --ids: {e}")
+        if not options["csv"]:
             return ids, rows
 
         id_col = options["id_column"]
@@ -129,7 +135,7 @@ class Command(BaseCommand):
                     rows[int(row[id_col])] = row
                 except ValueError:
                     raise CommandError(f"Non-integer ID in CSV: {row[id_col]!r}")
-        return set(rows), rows
+        return ids | set(rows), rows
 
     def verify(self, ids, rows, assessments):
         found = {a.pk: a for a in assessments}
