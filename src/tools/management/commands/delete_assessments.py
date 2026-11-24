@@ -304,6 +304,11 @@ class Command(BaseCommand):
             ws.append(header)
             for r in rows:
                 ws.append(list(r))
+            # openpyxl treats any string starting with "=" as a formula; keep DB text as text
+            for row in ws.iter_rows():
+                for c in row:
+                    if c.data_type == "f":
+                        c.data_type = "s"
             sheets.append(ws)
 
         sheet("Summary", ["Item", "Count"], self.summary_rows(plan, changed))
