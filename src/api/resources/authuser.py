@@ -100,7 +100,13 @@ class NewEmailConfirmation(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = (request.data.get("email") or "").strip()
+        email = request.data.get("email") or ""
+        if not isinstance(email, str):
+            return Response(
+                {"message": "Email must be a string"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        email = email.strip()
         if not email:
             return Response(
                 {"message": "Email is required"},
@@ -136,9 +142,17 @@ class NewEmailConfirmation(APIView):
 
         email_address = user_addresses.first()
         if email_address is None:
-            email_address = EmailAddress.objects.create(
-                user=user, email=user.email, primary=True, verified=False
-            )
+            # A concurrent request may insert the same (user, email) row first;
+            # use a savepoint so the IntegrityError doesn't poison an outer txn.
+            try:
+                with transaction.atomic():
+                    email_address = EmailAddress.objects.create(
+                        user=user, email=user.email, primary=True, verified=False
+                    )
+            except IntegrityError:
+                email_address = user_addresses.first()
+                if email_address is None:
+                    raise
         # On SMTP failure this raises EmailSendFailed (503) via ElinorAccountAdapter
         email_address.send_confirmation(request)
         return Response(
