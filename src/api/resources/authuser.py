@@ -11,8 +11,8 @@ from dj_rest_auth.registration.serializers import RegisterSerializer
 from dj_rest_auth.serializers import LoginSerializer, PasswordResetSerializer
 from django.conf import settings
 from django.contrib.sites.shortcuts import get_current_site
+from django.db import IntegrityError, transaction
 from rest_framework import serializers, status
-from rest_framework.exceptions import APIException
 from rest_framework.generics import get_object_or_404
 from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
@@ -67,16 +67,31 @@ class UserRegistrationSerializer(RegisterSerializer):
         if not accept_tor:
             missing_tor_message = "The Terms of Reference must be accepted in order to register a new account"
             raise serializers.ValidationError(missing_tor_message)
-        user = super().save(request)
-        user.first_name = first_name
-        user.last_name = last_name
-        user.save()
-        profile = user.profile
-        profile.affiliation = affiliation
-        profile.accept_tor = accept_tor
-        profile.created_by = user
-        profile.updated_by = user
-        profile.save()
+        # allauth validates username/email uniqueness before saving, but two
+        # concurrent identical POSTs can both pass validation; the loser hits the
+        # DB unique constraint. Roll back the whole user + profile and return a 400.
+        try:
+            with transaction.atomic():
+                user = super().save(request)
+                user.first_name = first_name
+                user.last_name = last_name
+                user.save()
+                profile = user.profile
+                profile.affiliation = affiliation
+                profile.accept_tor = accept_tor
+                profile.created_by = user
+                profile.updated_by = user
+                profile.save()
+        except IntegrityError:
+            # The username is the only DB-unique field on signup (allauth's email
+            # constraint covers verified addresses only). If it now exists, a
+            # concurrent request won the race; anything else should surface.
+            username = self.validated_data.get("username")
+            if username and User.objects.filter(username=username).exists():
+                raise serializers.ValidationError(
+                    {"username": ["A user with that username already exists."]}
+                )
+            raise
 
         return user
 
@@ -85,54 +100,65 @@ class NewEmailConfirmation(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        email = request.data.get("email")
+        email = request.data.get("email") or ""
+        if not isinstance(email, str):
+            return Response(
+                {"message": "Email must be a string"},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        email = email.strip()
         if not email:
             return Response(
                 {"message": "Email is required"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        users = User.objects.filter(email=email)
+        # Match auth_user.email case-insensitively: that is the address login
+        # requires to be verified and the one the confirmation is sent to.
+        user_ids = set(
+            User.objects.filter(email__iexact=email).values_list("id", flat=True)
+        )
 
-        if not users.exists():
+        if not user_ids:
             return Response(
                 {"message": "This email does not exist, please create a new account"},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        if users.count() > 1:
+        if len(user_ids) > 1:
             return Response(
                 {"message": "Multiple accounts found with this email. Please contact support."},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                status=status.HTTP_409_CONFLICT,
             )
 
-        user = users.first()
-        emailAddress = EmailAddress.objects.filter(user=user, verified=True).exists()
+        user = User.objects.get(pk=user_ids.pop())
+        user_addresses = user.emailaddress_set.filter(email__iexact=user.email)
 
-        if emailAddress:
+        if user_addresses.filter(verified=True).exists():
             return Response(
                 {"message": "This email is already verified"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
-        else:
+
+        email_address = user_addresses.first()
+        if email_address is None:
+            # A concurrent request may insert the same (user, email) row first;
+            # use a savepoint so the IntegrityError doesn't poison an outer txn.
             try:
-                email_address = EmailAddress.objects.get_or_create(
-                    user=user,
-                    email=user.email,
-                    defaults={'primary': True, 'verified': False}
-                )[0]
-                email_address.send_confirmation(request)
-                return Response(
-                    {"message": "Email confirmation sent"},
-                    status=status.HTTP_201_CREATED,
-                )
-            except APIException:
-                return Response(
-                    {
-                        "message": "This email does not exist, please create a new account"
-                    },
-                    status=status.HTTP_403_FORBIDDEN,
-                )
+                with transaction.atomic():
+                    email_address = EmailAddress.objects.create(
+                        user=user, email=user.email, primary=True, verified=False
+                    )
+            except IntegrityError:
+                email_address = user_addresses.first()
+                if email_address is None:
+                    raise
+        # On SMTP failure this raises EmailSendFailed (503) via ElinorAccountAdapter
+        email_address.send_confirmation(request)
+        return Response(
+            {"message": "Email confirmation sent"},
+            status=status.HTTP_201_CREATED,
+        )
 
 
 class FrontendURLPasswordResetForm(AllAuthPasswordResetForm):

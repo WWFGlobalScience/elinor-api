@@ -217,6 +217,7 @@ EMAIL_PORT = os.environ.get("EMAIL_PORT")
 EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD")
 EMAIL_USE_TLS = True
+EMAIL_TIMEOUT = 10  # seconds; never let a hung SMTP server block a worker
 DEFAULT_FROM_EMAIL = "Elinor <{}>".format(EMAIL_HOST_USER)
 EMAIL_CONTACT = os.environ.get("EMAIL_CONTACT")
 DRF_RECAPTCHA_SECRET_KEY = os.environ.get("DRF_RECAPTCHA_SECRET_KEY")
@@ -246,6 +247,7 @@ LOGGING = {
 # Authentication
 
 REST_SESSION_LOGIN = False
+ACCOUNT_ADAPTER = "api.adapter.ElinorAccountAdapter"
 ACCOUNT_EMAIL_VERIFICATION = "mandatory"
 ACCOUNT_LOGIN_METHODS = {"email", "username"}  # Allows login with either email or username
 ACCOUNT_SIGNUP_FIELDS = ["email*", "username*", "password1*"]  # * means required
